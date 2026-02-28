@@ -5,7 +5,6 @@ package ebpf
 import (
 	"errors"
 	"fmt"
-	"net"
 
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
@@ -91,9 +90,20 @@ func (r *CiliumMapReader) ReadCounts() (map[CiliumCountKey]int64, error) {
 	return result, nil
 }
 
+// binKey is a compact, allocation-free map key for aggregation.
+// Using fixed-size fields avoids string allocations in the hot loop.
+type binKey struct {
+	ip        [4]byte
+	proto     uint8 // 6=tcp, 17=udp, 0=other
+	direction uint8 // 0=source, 1=destination
+}
+
 func (r *CiliumMapReader) iterateMap(m *ebpf.Map, result map[CiliumCountKey]int64) error {
 	var tuple ciliumCT4Tuple
 	var value [56]byte // CT entry value — we don't parse it, just need the key
+
+	// Phase 1: Aggregate using binary keys (zero allocations per entry).
+	binCounts := make(map[binKey]int64)
 
 	iter := m.Iterate()
 	for iter.Next(&tuple, &value) {
@@ -104,11 +114,22 @@ func (r *CiliumMapReader) iterateMap(m *ebpf.Map, result map[CiliumCountKey]int6
 			continue
 		}
 
-		sourceIP := net.IPv4(tuple.SourceAddr[0], tuple.SourceAddr[1], tuple.SourceAddr[2], tuple.SourceAddr[3])
-		destIP := net.IPv4(tuple.DestAddr[0], tuple.DestAddr[1], tuple.DestAddr[2], tuple.DestAddr[3])
+		binCounts[binKey{ip: tuple.SourceAddr, proto: tuple.NextHdr, direction: 0}]++
+		binCounts[binKey{ip: tuple.DestAddr, proto: tuple.NextHdr, direction: 1}]++
+	}
 
+	if err := iter.Err(); err != nil {
+		if errors.Is(err, ebpf.ErrIterationAborted) {
+			log.Warn("Cilium CT map iteration aborted, partial results returned")
+		} else {
+			return err
+		}
+	}
+
+	// Phase 2: Convert only unique aggregated keys to strings.
+	for bk, count := range binCounts {
 		var proto string
-		switch tuple.NextHdr {
+		switch bk.proto {
 		case 6:
 			proto = "tcp"
 		case 17:
@@ -117,18 +138,16 @@ func (r *CiliumMapReader) iterateMap(m *ebpf.Map, result map[CiliumCountKey]int6
 			proto = "other"
 		}
 
-		srcKey := CiliumCountKey{IP: sourceIP.String(), Protocol: proto, Direction: "source"}
-		dstKey := CiliumCountKey{IP: destIP.String(), Protocol: proto, Direction: "destination"}
-		result[srcKey]++
-		result[dstKey]++
-	}
-
-	if err := iter.Err(); err != nil {
-		if errors.Is(err, ebpf.ErrIterationAborted) {
-			log.Warn("Cilium CT map iteration aborted, partial results returned")
-			return nil
+		var direction string
+		if bk.direction == 0 {
+			direction = "source"
+		} else {
+			direction = "destination"
 		}
-		return err
+
+		ip := fmt.Sprintf("%d.%d.%d.%d", bk.ip[0], bk.ip[1], bk.ip[2], bk.ip[3])
+		sk := CiliumCountKey{IP: ip, Protocol: proto, Direction: direction}
+		result[sk] += count
 	}
 
 	return nil

@@ -290,6 +290,7 @@ func (r *PodResolver) SetNodeInfo(nodeIP, nodeName string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.ipCache[nodeIP] = PodInfo{Name: "node", Namespace: "kube-system", App: nodeName}
+	log.Infof("Node IP %s registered as pod=node, app=%s", nodeIP, nodeName)
 }
 
 // Resolve looks up pod metadata by netns inode.

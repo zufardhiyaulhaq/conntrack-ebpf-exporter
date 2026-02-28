@@ -45,6 +45,7 @@ func (c *CiliumCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	aggregated := make(map[ciliumMetricKey]float64)
+	var resolved, unresolved int
 
 	for key, count := range counts {
 		if count <= 0 {
@@ -60,11 +61,16 @@ func (c *CiliumCollector) Collect(ch chan<- prometheus.Metric) {
 			podName = info.Name
 			namespace = info.Namespace
 			app = info.App
+			resolved++
+		} else {
+			unresolved++
 		}
 
 		mk := ciliumMetricKey{pod: podName, namespace: namespace, app: app, protocol: key.Protocol, direction: key.Direction}
 		aggregated[mk] += float64(count)
 	}
+
+	log.Debugf("Cilium CT: %d resolved, %d unresolved count keys", resolved, unresolved)
 
 	for mk, total := range aggregated {
 		metric, err := prometheus.NewConstMetric(
