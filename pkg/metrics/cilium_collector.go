@@ -22,8 +22,19 @@ var ciliumDescSimple = prometheus.NewDesc(
 	nil,
 )
 
+var ciliumDNSDesc = prometheus.NewDesc(
+	"node_cilium_ct_dns_entries_by_pod",
+	"Number of Cilium conntrack entries on port 53 (DNS) per pod.",
+	[]string{"pod", "namespace", "app"},
+	nil,
+)
+
 type ciliumMetricKey struct {
 	pod, namespace, app, protocol, direction string
+}
+
+type ciliumDNSMetricKey struct {
+	pod, namespace, app string
 }
 
 // CiliumCollector implements prometheus.Collector for per-pod Cilium CT metrics.
@@ -39,18 +50,19 @@ func NewCiliumCollector(reader ebpfpkg.CiliumReader, resolver resolver.Resolver,
 	return &CiliumCollector{reader: reader, resolver: resolver, breakdown: breakdown}
 }
 
-// Describe sends the metric descriptor.
+// Describe sends the metric descriptors.
 func (c *CiliumCollector) Describe(ch chan<- *prometheus.Desc) {
 	if c.breakdown {
 		ch <- ciliumDescFull
 	} else {
 		ch <- ciliumDescSimple
 	}
+	ch <- ciliumDNSDesc
 }
 
 // Collect reads Cilium CT maps, resolves pods by IP, aggregates by label set, and emits metrics.
 func (c *CiliumCollector) Collect(ch chan<- prometheus.Metric) {
-	counts, err := c.reader.ReadCounts()
+	result, err := c.reader.ReadCounts()
 	if err != nil {
 		desc := ciliumDescSimple
 		if c.breakdown {
@@ -61,10 +73,11 @@ func (c *CiliumCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
+	// Emit regular CT entry counts.
 	aggregated := make(map[ciliumMetricKey]float64)
 	var resolved, unresolved int
 
-	for key, count := range counts {
+	for key, count := range result.Counts {
 		if count <= 0 {
 			continue
 		}
@@ -114,6 +127,43 @@ func (c *CiliumCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 		if err != nil {
 			log.Errorf("Failed to create Cilium metric: %v", err)
+			continue
+		}
+		ch <- metric
+	}
+
+	// Emit DNS entry counts.
+	dnsAggregated := make(map[ciliumDNSMetricKey]float64)
+
+	for key, count := range result.DNSCounts {
+		if count <= 0 {
+			continue
+		}
+
+		podName := "unknown"
+		namespace := "unknown"
+		app := "unknown"
+
+		info, ok := c.resolver.ResolveByIP(key.IP)
+		if ok {
+			podName = info.Name
+			namespace = info.Namespace
+			app = info.App
+		}
+
+		mk := ciliumDNSMetricKey{pod: podName, namespace: namespace, app: app}
+		dnsAggregated[mk] += float64(count)
+	}
+
+	for mk, total := range dnsAggregated {
+		metric, err := prometheus.NewConstMetric(
+			ciliumDNSDesc,
+			prometheus.GaugeValue,
+			total,
+			mk.pod, mk.namespace, mk.app,
+		)
+		if err != nil {
+			log.Errorf("Failed to create DNS metric: %v", err)
 			continue
 		}
 		ch <- metric

@@ -2,6 +2,7 @@
 
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
+#include <bpf/bpf_endian.h>
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
@@ -16,12 +17,19 @@ char __license[] SEC("license") = "Dual MIT/GPL";
 #define DIR_SOURCE 0
 #define DIR_DEST   1
 
+#define DNS_PORT __bpf_constant_htons(53)
+
 // map_key matches conntrack.c — reuse the same Go MapKey type.
 struct map_key {
     __u32 ip;
     __u8  proto;
     __u8  direction;
     __u8  pad[2];
+};
+
+// dns_key is just an IP — used for the DNS output map.
+struct dns_key {
+    __u32 ip;
 };
 
 // Cilium's ipv4_ct_tuple layout (14 bytes, packed).
@@ -35,7 +43,6 @@ struct cilium_ct4_tuple {
 } __attribute__((packed));
 
 // Output map: aggregated counts per (ip, proto, direction).
-// Go reads this small map instead of walking 500K+ CT entries.
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, 131072);
@@ -43,19 +50,37 @@ struct {
     __type(value, __s64);
 } cilium_iter_counts SEC(".maps");
 
+// DNS output map: counts of port-53 CT entries per IP.
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 131072);
+    __type(key, struct dns_key);
+    __type(value, __s64);
+} cilium_iter_dns SEC(".maps");
+
 static __always_inline __u8 classify_proto(__u8 nexthdr) {
     if (nexthdr == 6)  return PROTO_TCP;
     if (nexthdr == 17) return PROTO_UDP;
     return PROTO_OTHER;
 }
 
-static __always_inline void bump(struct map_key *key) {
+static __always_inline void bump_count(struct map_key *key) {
     __s64 *val = bpf_map_lookup_elem(&cilium_iter_counts, key);
     if (val) {
         __sync_fetch_and_add(val, 1);
     } else {
         __s64 one = 1;
         bpf_map_update_elem(&cilium_iter_counts, key, &one, BPF_ANY);
+    }
+}
+
+static __always_inline void bump_dns(struct dns_key *key) {
+    __s64 *val = bpf_map_lookup_elem(&cilium_iter_dns, key);
+    if (val) {
+        __sync_fetch_and_add(val, 1);
+    } else {
+        __s64 one = 1;
+        bpf_map_update_elem(&cilium_iter_dns, key, &one, BPF_ANY);
     }
 }
 
@@ -74,21 +99,27 @@ int iter_cilium_ct4(struct bpf_iter__bpf_map_elem *ctx) {
     if (tuple->flags & 0x1)
         return 0;
 
-    __u8 proto = classify_proto(tuple->nexthdr);
+    // Separate DNS (port 53) entries from regular counts.
+    if (tuple->source_port == DNS_PORT || tuple->dest_port == DNS_PORT) {
+        struct dns_key src_dns = { .ip = tuple->source_addr };
+        struct dns_key dst_dns = { .ip = tuple->dest_addr };
+        bump_dns(&src_dns);
+        bump_dns(&dst_dns);
+    } else {
+        __u8 proto = classify_proto(tuple->nexthdr);
 
-    // Count source IP
-    struct map_key src_key = {};
-    src_key.ip        = tuple->source_addr;
-    src_key.proto     = proto;
-    src_key.direction = DIR_SOURCE;
-    bump(&src_key);
+        struct map_key src_key = {};
+        src_key.ip        = tuple->source_addr;
+        src_key.proto     = proto;
+        src_key.direction = DIR_SOURCE;
+        bump_count(&src_key);
 
-    // Count destination IP
-    struct map_key dst_key = {};
-    dst_key.ip        = tuple->dest_addr;
-    dst_key.proto     = proto;
-    dst_key.direction = DIR_DEST;
-    bump(&dst_key);
+        struct map_key dst_key = {};
+        dst_key.ip        = tuple->dest_addr;
+        dst_key.proto     = proto;
+        dst_key.direction = DIR_DEST;
+        bump_count(&dst_key);
+    }
 
     return 0;
 }

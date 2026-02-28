@@ -63,6 +63,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
+            - name: METRIC_BREAKDOWN
+              value: "false"
             - name: METRICS_PORT
               value: "9990"
             - name: LOG_LEVEL

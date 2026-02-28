@@ -1,7 +1,5 @@
 {
-  "annotations": {
-    "list": []
-  },
+  "annotations": { "list": [] },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -19,177 +17,58 @@
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 10000 },
-              { "color": "red", "value": 50000 }
-            ]
-          },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10000 }, { "color": "red", "value": 50000 }] },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 1 },
       "id": 1,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "title": "Total Inbound Entries",
-      "description": "Total connection entries where selected pods are the destination",
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "title": "Total Entries",
       "type": "stat",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", direction=\"destination\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"})",
-          "legendFormat": "Inbound",
-          "refId": "A"
-        }
-      ]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "$datasource" }, "expr": "sum(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"})", "legendFormat": "Total", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 10000 },
-              { "color": "red", "value": 50000 }
-            ]
-          },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 50 }, { "color": "red", "value": 200 }] },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 1 },
       "id": 2,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "title": "Total Outbound Entries",
-      "description": "Total connection entries where selected pods are the source",
-      "type": "stat",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", direction=\"source\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"})",
-          "legendFormat": "Outbound",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 50 },
-              { "color": "red", "value": 200 }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
-      "id": 3,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "title": "Unique Pods Tracked",
       "type": "stat",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "count(count by (pod) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"}))",
-          "legendFormat": "Pods",
-          "refId": "A"
-        }
-      ]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "$datasource" }, "expr": "count(count by (pod) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"}))", "legendFormat": "Pods", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 10 },
-              { "color": "red", "value": 30 }
-            ]
-          },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10 }, { "color": "red", "value": 30 }] },
           "unit": "percent"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
-      "id": 4,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
       "title": "Unknown Entries %",
       "description": "Percentage of entries where pod is unknown (remote pods, external traffic, Service ClusterIPs)",
       "type": "stat",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "100 * sum(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod=\"unknown\"}) / sum(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\"})",
-          "legendFormat": "Unknown %",
-          "refId": "A"
-        }
-      ]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "$datasource" }, "expr": "100 * sum(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod=\"unknown\"}) / sum(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\"})", "legendFormat": "Unknown %", "refId": "A" }]
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
       "id": 101,
-      "title": "Inbound Traffic (pod as Destination)",
+      "title": "Connections per Pod",
       "type": "row"
     },
     {
@@ -209,280 +88,21 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 6 },
-      "id": 5,
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 6 },
+      "id": 4,
       "options": {
         "legend": { "calcs": ["lastNotNull", "min", "max", "mean"], "displayMode": "table", "placement": "bottom", "sortBy": "lastNotNull", "sortDesc": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
-      "title": "Inbound Connections per Pod",
-      "description": "All inbound connections (all protocols combined) where these pods are the destination",
+      "title": "Connections per Pod",
+      "description": "Total conntrack entries per pod. Increasing values indicate growing connection counts.",
       "type": "timeseries",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (pod, namespace) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", direction=\"destination\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"})",
-          "legendFormat": "{{namespace}}/{{pod}}",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false, "axisCenteredZero": false, "axisLabel": "", "axisPlacement": "auto",
-            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
-            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 6 },
-      "id": 20,
-      "options": {
-        "legend": { "calcs": ["lastNotNull", "min", "max", "mean"], "displayMode": "table", "placement": "bottom", "sortBy": "lastNotNull", "sortDesc": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "title": "Inbound Connections per Pod (TCP)",
-      "description": "TCP inbound connections where these pods are the destination",
-      "type": "timeseries",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (pod, namespace) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", direction=\"destination\", protocol=\"tcp\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"})",
-          "legendFormat": "{{namespace}}/{{pod}}",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false, "axisCenteredZero": false, "axisLabel": "", "axisPlacement": "auto",
-            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
-            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 16 },
-      "id": 21,
-      "options": {
-        "legend": { "calcs": ["lastNotNull", "min", "max", "mean"], "displayMode": "table", "placement": "bottom", "sortBy": "lastNotNull", "sortDesc": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "title": "Inbound Connections per Pod (UDP)",
-      "description": "UDP inbound connections where these pods are the destination. High counts often indicate DNS-heavy workloads.",
-      "type": "timeseries",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (pod, namespace) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", direction=\"destination\", protocol=\"udp\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"})",
-          "legendFormat": "{{namespace}}/{{pod}}",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false, "axisCenteredZero": false, "axisLabel": "", "axisPlacement": "auto",
-            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
-            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 16 },
-      "id": 22,
-      "options": {
-        "legend": { "calcs": ["lastNotNull", "min", "max", "mean"], "displayMode": "table", "placement": "bottom", "sortBy": "lastNotNull", "sortDesc": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "title": "Inbound Connections per Pod (Other)",
-      "description": "Non-TCP/UDP inbound connections where these pods are the destination",
-      "type": "timeseries",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (pod, namespace) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", direction=\"destination\", protocol=\"other\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"})",
-          "legendFormat": "{{namespace}}/{{pod}}",
-          "refId": "A"
-        }
-      ]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "$datasource" }, "expr": "sum by (pod, namespace, app) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"})", "legendFormat": "{{namespace}}/{{pod}}", "refId": "A" }]
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
       "id": 102,
-      "title": "Outbound Traffic (pod as Source)",
-      "type": "row"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false, "axisCenteredZero": false, "axisLabel": "", "axisPlacement": "auto",
-            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
-            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 27 },
-      "id": 6,
-      "options": {
-        "legend": { "calcs": ["lastNotNull", "min", "max", "mean"], "displayMode": "table", "placement": "bottom", "sortBy": "lastNotNull", "sortDesc": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "title": "Outbound Connections per Pod",
-      "description": "All outbound connections (all protocols combined) where these pods are the source",
-      "type": "timeseries",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (pod, namespace) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", direction=\"source\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"})",
-          "legendFormat": "{{namespace}}/{{pod}}",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false, "axisCenteredZero": false, "axisLabel": "", "axisPlacement": "auto",
-            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
-            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 27 },
-      "id": 23,
-      "options": {
-        "legend": { "calcs": ["lastNotNull", "min", "max", "mean"], "displayMode": "table", "placement": "bottom", "sortBy": "lastNotNull", "sortDesc": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "title": "Outbound Connections per Pod (TCP)",
-      "description": "TCP outbound connections where these pods are the source",
-      "type": "timeseries",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (pod, namespace) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", direction=\"source\", protocol=\"tcp\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"})",
-          "legendFormat": "{{namespace}}/{{pod}}",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false, "axisCenteredZero": false, "axisLabel": "", "axisPlacement": "auto",
-            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
-            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 37 },
-      "id": 24,
-      "options": {
-        "legend": { "calcs": ["lastNotNull", "min", "max", "mean"], "displayMode": "table", "placement": "bottom", "sortBy": "lastNotNull", "sortDesc": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "title": "Outbound Connections per Pod (UDP)",
-      "description": "UDP outbound connections where these pods are the source. High counts often indicate DNS-heavy workloads.",
-      "type": "timeseries",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (pod, namespace) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", direction=\"source\", protocol=\"udp\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"})",
-          "legendFormat": "{{namespace}}/{{pod}}",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false, "axisCenteredZero": false, "axisLabel": "", "axisPlacement": "auto",
-            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
-            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 37 },
-      "id": 25,
-      "options": {
-        "legend": { "calcs": ["lastNotNull", "min", "max", "mean"], "displayMode": "table", "placement": "bottom", "sortBy": "lastNotNull", "sortDesc": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "title": "Outbound Connections per Pod (Other)",
-      "description": "Non-TCP/UDP outbound connections where these pods are the source",
-      "type": "timeseries",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (pod, namespace) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", direction=\"source\", protocol=\"other\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"})",
-          "legendFormat": "{{namespace}}/{{pod}}",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 47 },
-      "id": 104,
       "title": "Connection Details",
       "type": "row"
     },
@@ -491,87 +111,46 @@
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
-          "custom": {
-            "align": "auto",
-            "cellOptions": { "type": "auto" },
-            "inspect": false
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null }
-            ]
-          }
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
         "overrides": [
           {
             "matcher": { "id": "byName", "options": "Value" },
             "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "mode": "gradient",
-                  "type": "gauge"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    { "color": "green", "value": null },
-                    { "color": "yellow", "value": 1000 },
-                    { "color": "red", "value": 10000 }
-                  ]
-                }
-              }
+              { "id": "custom.cellOptions", "value": { "mode": "gradient", "type": "gauge" } },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1000 }, { "color": "red", "value": 10000 }] } }
             ]
           }
         ]
       },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 48 },
-      "id": 10,
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 19 },
+      "id": 5,
       "options": {
         "cellHeight": "sm",
         "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
         "showHeader": true,
         "sortBy": [{ "desc": true, "displayName": "Entries" }]
       },
-      "title": "All Connections (Table)",
-      "description": "Full breakdown of all pod connections, sortable by any column",
+      "title": "All Pods",
+      "description": "All tracked pods sorted by connection count",
       "type": "table",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (pod, namespace, app, protocol, direction) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"})",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "$datasource" }, "expr": "sum by (pod, namespace, app) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod!=\"unknown\", pod!=\"node\", namespace=~\"$namespace\", app=~\"$app\"})", "format": "table", "instant": true, "legendFormat": "", "refId": "A" }],
       "transformations": [
         {
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true },
             "indexByName": {},
-            "renameByName": {
-              "app": "App",
-              "direction": "Direction",
-              "namespace": "Namespace",
-              "pod": "Pod",
-              "protocol": "Protocol",
-              "Value": "Entries"
-            }
+            "renameByName": { "app": "App", "namespace": "Namespace", "pod": "Pod", "Value": "Entries" }
           }
         }
       ]
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 58 },
-      "id": 105,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 29 },
+      "id": 103,
       "title": "Node View — $node",
       "type": "row"
     },
@@ -581,51 +160,27 @@
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
+            "axisBorderShow": false, "axisCenteredZero": false, "axisLabel": "", "axisPlacement": "auto",
+            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
+            "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
+            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 59 },
-      "id": 11,
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 30 },
+      "id": 6,
       "options": {
-        "legend": {
-          "calcs": ["lastNotNull", "min", "max", "mean"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "sortBy": "lastNotNull",
-          "sortDesc": true
-        },
+        "legend": { "calcs": ["lastNotNull", "min", "max", "mean"], "displayMode": "table", "placement": "bottom", "sortBy": "lastNotNull", "sortDesc": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "title": "Node Traffic",
       "description": "Connections from/to the node itself (kubelet, kube-proxy, systemd services)",
       "type": "timeseries",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (protocol, direction) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod=\"node\", app=~\"$node\"})",
-          "legendFormat": "{{protocol}} ({{direction}})",
-          "refId": "A"
-        }
-      ]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "$datasource" }, "expr": "sum(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod=\"node\", app=~\"$node\"})", "legendFormat": "{{app}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "$datasource" },
@@ -633,149 +188,48 @@
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
+            "axisBorderShow": false, "axisCenteredZero": false, "axisLabel": "", "axisPlacement": "auto",
+            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
+            "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5,
+            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 59 },
-      "id": 12,
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 30 },
+      "id": 7,
       "options": {
-        "legend": {
-          "calcs": ["lastNotNull", "min", "max", "mean"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "sortBy": "lastNotNull",
-          "sortDesc": true
-        },
+        "legend": { "calcs": ["lastNotNull", "min", "max", "mean"], "displayMode": "table", "placement": "bottom", "sortBy": "lastNotNull", "sortDesc": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
-      "title": "Pods on Node — Inbound",
-      "description": "Inbound connections for all pods running on the selected node",
+      "title": "Pods on Node",
+      "description": "All pods running on the selected node",
       "type": "timeseries",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (pod, namespace, app) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", instance=~\"$node_instance\", direction=\"destination\", pod!=\"unknown\", pod!=\"node\"})",
-          "legendFormat": "{{namespace}}/{{pod}}",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 59 },
-      "id": 13,
-      "options": {
-        "legend": {
-          "calcs": ["lastNotNull", "min", "max", "mean"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "sortBy": "lastNotNull",
-          "sortDesc": true
-        },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "title": "Pods on Node — Outbound",
-      "description": "Outbound connections for all pods running on the selected node",
-      "type": "timeseries",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (pod, namespace, app) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", instance=~\"$node_instance\", direction=\"source\", pod!=\"unknown\", pod!=\"node\"})",
-          "legendFormat": "{{namespace}}/{{pod}}",
-          "refId": "A"
-        }
-      ]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "$datasource" }, "expr": "sum by (pod, namespace, app) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", instance=~\"$node_instance\", pod!=\"unknown\", pod!=\"node\"})", "legendFormat": "{{namespace}}/{{pod}}", "refId": "A" }]
     },
     {
       "datasource": { "type": "prometheus", "uid": "$datasource" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
-          "custom": {
-            "align": "auto",
-            "cellOptions": { "type": "auto" },
-            "inspect": false
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null }
-            ]
-          }
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
         "overrides": [
           {
             "matcher": { "id": "byName", "options": "Value" },
             "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "mode": "gradient",
-                  "type": "gauge"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    { "color": "green", "value": null },
-                    { "color": "yellow", "value": 1000 },
-                    { "color": "red", "value": 10000 }
-                  ]
-                }
-              }
+              { "id": "custom.cellOptions", "value": { "mode": "gradient", "type": "gauge" } },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1000 }, { "color": "red", "value": 10000 }] } }
             ]
           }
         ]
       },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 67 },
-      "id": 14,
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 40 },
+      "id": 8,
       "options": {
         "cellHeight": "sm",
         "footer": { "countRows": false, "fields": "", "reducer": ["sum"], "show": false },
@@ -783,144 +237,17 @@
         "sortBy": [{ "desc": true, "displayName": "Entries" }]
       },
       "title": "Node Pods Detail — $node",
-      "description": "All pods on the selected node with their connection details",
+      "description": "All pods on the selected node sorted by connection count",
       "type": "table",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (pod, namespace, app, protocol, direction) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", instance=~\"$node_instance\", pod!=\"unknown\", pod!=\"node\"})",
-          "format": "table",
-          "instant": true,
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "$datasource" }, "expr": "sum by (pod, namespace, app) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", instance=~\"$node_instance\", pod!=\"unknown\", pod!=\"node\"})", "format": "table", "instant": true, "legendFormat": "", "refId": "A" }],
       "transformations": [
         {
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true },
             "indexByName": {},
-            "renameByName": {
-              "app": "App",
-              "direction": "Direction",
-              "namespace": "Namespace",
-              "pod": "Pod",
-              "protocol": "Protocol",
-              "Value": "Entries"
-            }
+            "renameByName": { "app": "App", "namespace": "Namespace", "pod": "Pod", "Value": "Entries" }
           }
-        }
-      ]
-    },
-    {
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 77 },
-      "id": 106,
-      "title": "Unknown & Unresolved Traffic",
-      "type": "row"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 78 },
-      "id": 15,
-      "options": {
-        "legend": {
-          "calcs": ["lastNotNull", "min", "max", "mean"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "sortBy": "lastNotNull",
-          "sortDesc": true
-        },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "title": "Unknown Source Traffic",
-      "description": "Connections from unresolvable IPs (remote pods on other nodes, external clients, load balancers)",
-      "type": "timeseries",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (protocol) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod=\"unknown\", direction=\"source\"})",
-          "legendFormat": "{{protocol}}",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "$datasource" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 78 },
-      "id": 16,
-      "options": {
-        "legend": {
-          "calcs": ["lastNotNull", "min", "max", "mean"],
-          "displayMode": "table",
-          "placement": "bottom",
-          "sortBy": "lastNotNull",
-          "sortDesc": true
-        },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "title": "Unknown Destination Traffic",
-      "description": "Connections to unresolvable IPs (Service ClusterIPs, external endpoints, DNS)",
-      "type": "timeseries",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "$datasource" },
-          "expr": "sum by (protocol) (node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod=\"unknown\", direction=\"destination\"})",
-          "legendFormat": "{{protocol}}",
-          "refId": "A"
         }
       ]
     }
@@ -954,11 +281,7 @@
         "multi": false,
         "name": "cluster_name",
         "options": [],
-        "query": {
-          "qryType": 1,
-          "query": "label_values(kube_deployment_metadata_generation, cluster_name)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
+        "query": { "qryType": 1, "query": "label_values(kube_deployment_metadata_generation, cluster_name)", "refId": "PrometheusVariableQueryEditor-VariableQuery" },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -975,11 +298,7 @@
         "multi": true,
         "name": "namespace",
         "options": [],
-        "query": {
-          "qryType": 1,
-          "query": "label_values(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod!=\"unknown\", pod!=\"node\"}, namespace)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
+        "query": { "qryType": 1, "query": "label_values(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod!=\"unknown\", pod!=\"node\"}, namespace)", "refId": "PrometheusVariableQueryEditor-VariableQuery" },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -996,11 +315,7 @@
         "multi": true,
         "name": "app",
         "options": [],
-        "query": {
-          "qryType": 1,
-          "query": "label_values(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", namespace=~\"$namespace\", pod!=\"unknown\", pod!=\"node\"}, app)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
+        "query": { "qryType": 1, "query": "label_values(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", namespace=~\"$namespace\", pod!=\"unknown\", pod!=\"node\"}, app)", "refId": "PrometheusVariableQueryEditor-VariableQuery" },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -1017,11 +332,7 @@
         "multi": false,
         "name": "node",
         "options": [],
-        "query": {
-          "qryType": 1,
-          "query": "label_values(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod=\"node\"}, app)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
+        "query": { "qryType": 1, "query": "label_values(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod=\"node\"}, app)", "refId": "PrometheusVariableQueryEditor-VariableQuery" },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -1038,11 +349,7 @@
         "multi": false,
         "name": "node_instance",
         "options": [],
-        "query": {
-          "qryType": 1,
-          "query": "label_values(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod=\"node\", app=~\"$node\"}, instance)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
+        "query": { "qryType": 1, "query": "label_values(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", pod=\"node\", app=~\"$node\"}, instance)", "refId": "PrometheusVariableQueryEditor-VariableQuery" },
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,

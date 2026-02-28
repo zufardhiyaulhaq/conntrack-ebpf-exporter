@@ -48,7 +48,16 @@ func main() {
 
 	metricBreakdown := strings.EqualFold(os.Getenv("METRIC_BREAKDOWN"), "true")
 
-	log.Infof("Starting conntrack-ebpf-exporter on node %s (metric breakdown: %v)", nodeName, metricBreakdown)
+	cacheInterval := 30 * time.Second
+	if v := os.Getenv("METRIC_CACHE_INTERVAL"); v != "" {
+		parsed, err := time.ParseDuration(v)
+		if err != nil {
+			log.Fatalf("Invalid METRIC_CACHE_INTERVAL %q: %v", v, err)
+		}
+		cacheInterval = parsed
+	}
+
+	log.Infof("Starting conntrack-ebpf-exporter on node %s (metric breakdown: %v, cache interval: %s)", nodeName, metricBreakdown, cacheInterval)
 
 	// Load kernel conntrack BPF program
 	loader, err := ebpfpkg.NewLoader()
@@ -74,6 +83,12 @@ func main() {
 		ciliumReader = iterReader
 	}
 	if ciliumReader != nil {
+		cachedReader, err := ebpfpkg.NewCachedCiliumReader(ciliumReader, cacheInterval)
+		if err != nil {
+			log.Warnf("Failed to initialize Cilium CT cache: %v", err)
+		} else {
+			ciliumReader = cachedReader
+		}
 		defer ciliumReader.Close()
 	}
 

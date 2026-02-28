@@ -19,16 +19,18 @@ const (
 	ciliumIterSourcePath   = "/bpf/cilium_iter.c"
 	ciliumIterCompiledPath = "/tmp/cilium_iter.o"
 	ciliumIterMapName      = "cilium_iter_counts"
+	ciliumIterDNSMapName   = "cilium_iter_dns"
 )
 
 // CiliumIterReader uses a BPF iterator to aggregate Cilium's CT map entries
 // entirely in kernel space. The kernel walks the map and writes aggregated
-// counts into a small output map that Go reads after each scrape.
+// counts into small output maps that Go reads after each scrape.
 type CiliumIterReader struct {
 	coll       *ebpf.Collection
 	ct4Iter    *link.Iter
 	any4Iter   *link.Iter // nil if cilium_ct_any4_ not present
 	outputMap  *ebpf.Map
+	dnsMap     *ebpf.Map
 	ct4ExtMap  *ebpf.Map // external Cilium map (close on teardown)
 	any4ExtMap *ebpf.Map // external Cilium map (close on teardown)
 }
@@ -184,22 +186,38 @@ func NewCiliumIterReader() (*CiliumIterReader, error) {
 		return nil, fmt.Errorf("output map %q not found in collection", ciliumIterMapName)
 	}
 
+	dnsMap := coll.Maps[ciliumIterDNSMapName]
+	if dnsMap == nil {
+		ct4Iter.Close()
+		if any4Iter != nil {
+			any4Iter.Close()
+		}
+		coll.Close()
+		ct4Map.Close()
+		if any4Map != nil {
+			any4Map.Close()
+		}
+		return nil, fmt.Errorf("DNS output map %q not found in collection", ciliumIterDNSMapName)
+	}
+
 	log.Info("BPF iterator attached to Cilium CT maps")
 	return &CiliumIterReader{
 		coll:       coll,
 		ct4Iter:    ct4Iter,
 		any4Iter:   any4Iter,
 		outputMap:  outputMap,
+		dnsMap:     dnsMap,
 		ct4ExtMap:  ct4Map,
 		any4ExtMap: any4Map,
 	}, nil
 }
 
-// ReadCounts triggers the BPF iterator and reads the aggregated output map.
-// The output map is cleared before each run for snapshot semantics.
-func (r *CiliumIterReader) ReadCounts() (map[CiliumCountKey]int64, error) {
-	// Clear the output map so we get a fresh snapshot.
-	r.clearOutputMap()
+// ReadCounts triggers the BPF iterator and reads both aggregated output maps.
+// Both output maps are cleared before each run for snapshot semantics.
+func (r *CiliumIterReader) ReadCounts() (*CiliumReadResult, error) {
+	// Clear output maps so we get a fresh snapshot.
+	clearBPFMap(r.outputMap)
+	clearBPFMap(r.dnsMap)
 
 	// Trigger the CT4 iterator — the kernel walks the entire map.
 	if err := r.triggerIter(r.ct4Iter); err != nil {
@@ -213,21 +231,35 @@ func (r *CiliumIterReader) ReadCounts() (map[CiliumCountKey]int64, error) {
 		}
 	}
 
-	// Read the small output map and convert to CiliumCountKey.
-	return r.readOutputMap()
+	// Read both output maps.
+	counts, err := r.readOutputMap()
+	if err != nil {
+		return nil, err
+	}
+
+	dnsCounts, err := r.readDNSMap()
+	if err != nil {
+		return nil, err
+	}
+
+	return &CiliumReadResult{Counts: counts, DNSCounts: dnsCounts}, nil
 }
 
-// clearOutputMap deletes all entries from the output map.
-func (r *CiliumIterReader) clearOutputMap() {
-	var key MapKey
-	var keys []MapKey
+// clearBPFMap deletes all entries from a BPF hash map.
+func clearBPFMap(m *ebpf.Map) {
+	var key []byte
+	keySize := int(m.KeySize())
+	key = make([]byte, keySize)
+	var keys [][]byte
 
-	iter := r.outputMap.Iterate()
+	iter := m.Iterate()
 	for iter.Next(&key, new(int64)) {
-		keys = append(keys, key)
+		k := make([]byte, keySize)
+		copy(k, key)
+		keys = append(keys, k)
 	}
 	for _, k := range keys {
-		r.outputMap.Delete(&k)
+		m.Delete(k)
 	}
 }
 
@@ -282,6 +314,32 @@ func (r *CiliumIterReader) readOutputMap() (map[CiliumCountKey]int64, error) {
 			return result, nil
 		}
 		return nil, fmt.Errorf("iterating output map: %w", err)
+	}
+
+	return result, nil
+}
+
+// readDNSMap reads the DNS output map (keyed by IP as uint32).
+func (r *CiliumIterReader) readDNSMap() (map[CiliumDNSKey]int64, error) {
+	result := make(map[CiliumDNSKey]int64)
+
+	var ip uint32
+	var value int64
+
+	iter := r.dnsMap.Iterate()
+	for iter.Next(&ip, &value) {
+		if value <= 0 {
+			continue
+		}
+		result[CiliumDNSKey{IP: mapKeyIPToString(ip)}] += value
+	}
+
+	if err := iter.Err(); err != nil {
+		if errors.Is(err, ebpf.ErrIterationAborted) {
+			log.Warn("DNS map iteration aborted, partial results returned")
+			return result, nil
+		}
+		return nil, fmt.Errorf("iterating DNS map: %w", err)
 	}
 
 	return result, nil

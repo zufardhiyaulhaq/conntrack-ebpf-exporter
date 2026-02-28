@@ -13,6 +13,7 @@ import (
 const (
 	ciliumCT4MapName    = "cilium_ct4_glob"
 	ciliumCTAny4MapName = "cilium_ct_any4_"
+	dnsPort             = 53
 )
 
 // ciliumCT4Tuple matches Cilium's struct ipv4_ct_tuple (14 bytes).
@@ -73,10 +74,12 @@ func findBPFMapByName(name string) (*ebpf.Map, error) {
 }
 
 // ReadCounts iterates Cilium's CT maps and returns entry counts grouped by
-// IP, protocol, and direction. Each original-direction CT entry produces two
-// count keys: one for the source IP and one for the destination IP.
-func (r *CiliumMapReader) ReadCounts() (map[CiliumCountKey]int64, error) {
-	result := make(map[CiliumCountKey]int64)
+// IP, protocol, and direction, plus DNS-specific counts for port 53 entries.
+func (r *CiliumMapReader) ReadCounts() (*CiliumReadResult, error) {
+	result := &CiliumReadResult{
+		Counts:    make(map[CiliumCountKey]int64),
+		DNSCounts: make(map[CiliumDNSKey]int64),
+	}
 
 	if err := r.iterateMap(r.ct4Map, result); err != nil {
 		return nil, fmt.Errorf("reading Cilium CT4 map: %w", err)
@@ -98,12 +101,13 @@ type binKey struct {
 	direction uint8 // 0=source, 1=destination
 }
 
-func (r *CiliumMapReader) iterateMap(m *ebpf.Map, result map[CiliumCountKey]int64) error {
+func (r *CiliumMapReader) iterateMap(m *ebpf.Map, result *CiliumReadResult) error {
 	var tuple ciliumCT4Tuple
 	var value [56]byte // CT entry value — we don't parse it, just need the key
 
 	// Phase 1: Aggregate using binary keys (zero allocations per entry).
 	binCounts := make(map[binKey]int64)
+	dnsCounts := make(map[[4]byte]int64)
 
 	iter := m.Iterate()
 	for iter.Next(&tuple, &value) {
@@ -114,8 +118,15 @@ func (r *CiliumMapReader) iterateMap(m *ebpf.Map, result map[CiliumCountKey]int6
 			continue
 		}
 
-		binCounts[binKey{ip: tuple.SourceAddr, proto: tuple.NextHdr, direction: 0}]++
-		binCounts[binKey{ip: tuple.DestAddr, proto: tuple.NextHdr, direction: 1}]++
+		// Separate DNS (port 53) entries from regular counts.
+		// Ports in BPF map are network byte order; ntohs swaps to host order.
+		if ntohs(tuple.SourcePort) == dnsPort || ntohs(tuple.DestPort) == dnsPort {
+			dnsCounts[tuple.SourceAddr]++
+			dnsCounts[tuple.DestAddr]++
+		} else {
+			binCounts[binKey{ip: tuple.SourceAddr, proto: tuple.NextHdr, direction: 0}]++
+			binCounts[binKey{ip: tuple.DestAddr, proto: tuple.NextHdr, direction: 1}]++
+		}
 	}
 
 	if err := iter.Err(); err != nil {
@@ -147,10 +158,20 @@ func (r *CiliumMapReader) iterateMap(m *ebpf.Map, result map[CiliumCountKey]int6
 
 		ip := fmt.Sprintf("%d.%d.%d.%d", bk.ip[0], bk.ip[1], bk.ip[2], bk.ip[3])
 		sk := CiliumCountKey{IP: ip, Protocol: proto, Direction: direction}
-		result[sk] += count
+		result.Counts[sk] += count
+	}
+
+	for addr, count := range dnsCounts {
+		ip := fmt.Sprintf("%d.%d.%d.%d", addr[0], addr[1], addr[2], addr[3])
+		result.DNSCounts[CiliumDNSKey{IP: ip}] += count
 	}
 
 	return nil
+}
+
+// ntohs converts a uint16 from network byte order (big-endian) to host byte order.
+func ntohs(v uint16) uint16 {
+	return (v >> 8) | (v << 8)
 }
 
 // Close closes the Cilium CT map file descriptors.
