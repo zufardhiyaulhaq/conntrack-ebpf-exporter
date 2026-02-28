@@ -90,9 +90,9 @@ type PodResolver struct {
 	ipCache   map[string]PodInfo  // pod IP → pod info
 	podInodes map[string][]uint32 // "namespace/name" → list of netns inodes
 	podIPs    map[string][]string // "namespace/name" → list of pod IPs
-	proc      ProcReader
-	nodeName  string
-	mu        sync.RWMutex
+	proc     ProcReader
+	nodeName string
+	mu       sync.RWMutex
 }
 
 // NewPodResolver creates a PodResolver and starts the K8s informer.
@@ -103,8 +103,8 @@ func NewPodResolver(clientset kubernetes.Interface, nodeName string, stopCh <-ch
 		ipCache:   make(map[string]PodInfo),
 		podInodes: make(map[string][]uint32),
 		podIPs:    make(map[string][]string),
-		proc:      &RealProcReader{},
-		nodeName:  nodeName,
+		proc:     &RealProcReader{},
+		nodeName: nodeName,
 	}
 
 	factory := informers.NewSharedInformerFactoryWithOptions(
@@ -182,8 +182,7 @@ func (r *PodResolver) handlePodAdd(pod *corev1.Pod) {
 	r.AddPod(pod.Name, pod.Namespace, app, containerIDs)
 
 	// Store pod IP for Cilium CT resolution.
-	// hostNetwork pods share the node IP — attribute their traffic to the node
-	// rather than letting a random pod claim the IP.
+	// hostNetwork pods share the node IP — attribute their traffic to the node.
 	if pod.Status.PodIP != "" {
 		if pod.Spec.HostNetwork {
 			r.SetNodeInfo(pod.Status.PodIP, r.nodeName)
