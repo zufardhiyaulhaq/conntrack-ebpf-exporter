@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -45,7 +46,9 @@ func main() {
 		metricsPort = "9990"
 	}
 
-	log.Infof("Starting conntrack-ebpf-exporter on node %s", nodeName)
+	metricBreakdown := strings.EqualFold(os.Getenv("METRIC_BREAKDOWN"), "true")
+
+	log.Infof("Starting conntrack-ebpf-exporter on node %s (metric breakdown: %v)", nodeName, metricBreakdown)
 
 	// Load kernel conntrack BPF program
 	loader, err := ebpfpkg.NewLoader()
@@ -97,14 +100,14 @@ func main() {
 
 	// Register kernel conntrack collector
 	if loader != nil {
-		collector := metrics.NewCollector(loader, podResolver)
+		collector := metrics.NewCollector(loader, podResolver, metricBreakdown)
 		prometheus.MustRegister(collector)
 		log.Info("Kernel conntrack collector registered")
 	}
 
 	// Register Cilium conntrack collector
 	if ciliumReader != nil {
-		ciliumCollector := metrics.NewCiliumCollector(ciliumReader, podResolver)
+		ciliumCollector := metrics.NewCiliumCollector(ciliumReader, podResolver, metricBreakdown)
 		prometheus.MustRegister(ciliumCollector)
 		log.Info("Cilium conntrack collector registered")
 	}

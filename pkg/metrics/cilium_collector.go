@@ -8,10 +8,17 @@ import (
 	"github.com/zufardhiyaulhaq/conntrack-ebpf-exporter/pkg/resolver"
 )
 
-var ciliumDesc = prometheus.NewDesc(
+var ciliumDescFull = prometheus.NewDesc(
 	"node_cilium_ct_entries_by_pod",
 	"Number of Cilium conntrack entries per pod, broken down by protocol and direction.",
 	[]string{"pod", "namespace", "app", "protocol", "direction"},
+	nil,
+)
+
+var ciliumDescSimple = prometheus.NewDesc(
+	"node_cilium_ct_entries_by_pod",
+	"Number of Cilium conntrack entries per pod.",
+	[]string{"pod", "namespace", "app"},
 	nil,
 )
 
@@ -21,26 +28,36 @@ type ciliumMetricKey struct {
 
 // CiliumCollector implements prometheus.Collector for per-pod Cilium CT metrics.
 type CiliumCollector struct {
-	reader   ebpfpkg.CiliumReader
-	resolver resolver.Resolver
+	reader    ebpfpkg.CiliumReader
+	resolver  resolver.Resolver
+	breakdown bool
 }
 
-// NewCiliumCollector creates a new CiliumCollector.
-func NewCiliumCollector(reader ebpfpkg.CiliumReader, resolver resolver.Resolver) *CiliumCollector {
-	return &CiliumCollector{reader: reader, resolver: resolver}
+// NewCiliumCollector creates a new CiliumCollector. When breakdown is true,
+// metrics include protocol and direction labels; when false, only pod labels.
+func NewCiliumCollector(reader ebpfpkg.CiliumReader, resolver resolver.Resolver, breakdown bool) *CiliumCollector {
+	return &CiliumCollector{reader: reader, resolver: resolver, breakdown: breakdown}
 }
 
 // Describe sends the metric descriptor.
 func (c *CiliumCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- ciliumDesc
+	if c.breakdown {
+		ch <- ciliumDescFull
+	} else {
+		ch <- ciliumDescSimple
+	}
 }
 
 // Collect reads Cilium CT maps, resolves pods by IP, aggregates by label set, and emits metrics.
 func (c *CiliumCollector) Collect(ch chan<- prometheus.Metric) {
 	counts, err := c.reader.ReadCounts()
 	if err != nil {
+		desc := ciliumDescSimple
+		if c.breakdown {
+			desc = ciliumDescFull
+		}
 		log.Errorf("Failed to read Cilium CT maps: %v", err)
-		ch <- prometheus.NewInvalidMetric(ciliumDesc, err)
+		ch <- prometheus.NewInvalidMetric(desc, err)
 		return
 	}
 
@@ -66,19 +83,35 @@ func (c *CiliumCollector) Collect(ch chan<- prometheus.Metric) {
 			unresolved++
 		}
 
-		mk := ciliumMetricKey{pod: podName, namespace: namespace, app: app, protocol: key.Protocol, direction: key.Direction}
+		var mk ciliumMetricKey
+		if c.breakdown {
+			mk = ciliumMetricKey{pod: podName, namespace: namespace, app: app, protocol: key.Protocol, direction: key.Direction}
+		} else {
+			mk = ciliumMetricKey{pod: podName, namespace: namespace, app: app}
+		}
 		aggregated[mk] += float64(count)
 	}
 
 	log.Debugf("Cilium CT: %d resolved, %d unresolved count keys", resolved, unresolved)
 
 	for mk, total := range aggregated {
-		metric, err := prometheus.NewConstMetric(
-			ciliumDesc,
-			prometheus.GaugeValue,
-			total,
-			mk.pod, mk.namespace, mk.app, mk.protocol, mk.direction,
-		)
+		var metric prometheus.Metric
+		var err error
+		if c.breakdown {
+			metric, err = prometheus.NewConstMetric(
+				ciliumDescFull,
+				prometheus.GaugeValue,
+				total,
+				mk.pod, mk.namespace, mk.app, mk.protocol, mk.direction,
+			)
+		} else {
+			metric, err = prometheus.NewConstMetric(
+				ciliumDescSimple,
+				prometheus.GaugeValue,
+				total,
+				mk.pod, mk.namespace, mk.app,
+			)
+		}
 		if err != nil {
 			log.Errorf("Failed to create Cilium metric: %v", err)
 			continue

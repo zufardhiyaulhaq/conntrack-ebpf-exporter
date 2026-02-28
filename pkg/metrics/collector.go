@@ -16,10 +16,17 @@ const (
 	metricHelp = "Number of conntrack entries per pod, broken down by protocol and direction."
 )
 
-var desc = prometheus.NewDesc(
+var descFull = prometheus.NewDesc(
 	metricName,
 	metricHelp,
 	[]string{"pod", "namespace", "app", "protocol", "direction"},
+	nil,
+)
+
+var descSimple = prometheus.NewDesc(
+	metricName,
+	"Number of conntrack entries per pod.",
+	[]string{"pod", "namespace", "app"},
 	nil,
 )
 
@@ -29,24 +36,34 @@ type conntrackMetricKey struct {
 
 // Collector implements prometheus.Collector for per-pod conntrack metrics.
 type Collector struct {
-	reader   ebpfpkg.MapReader
-	resolver resolver.Resolver
+	reader    ebpfpkg.MapReader
+	resolver  resolver.Resolver
+	breakdown bool
 }
 
-// NewCollector creates a new Collector.
-func NewCollector(reader ebpfpkg.MapReader, resolver resolver.Resolver) *Collector {
-	return &Collector{reader: reader, resolver: resolver}
+// NewCollector creates a new Collector. When breakdown is true, metrics include
+// protocol and direction labels; when false, only pod labels.
+func NewCollector(reader ebpfpkg.MapReader, resolver resolver.Resolver, breakdown bool) *Collector {
+	return &Collector{reader: reader, resolver: resolver, breakdown: breakdown}
 }
 
 // Describe sends the metric descriptor.
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- desc
+	if c.breakdown {
+		ch <- descFull
+	} else {
+		ch <- descSimple
+	}
 }
 
 // Collect reads BPF counters, resolves pods by IP, aggregates by label set, and emits metrics.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	counters, err := c.reader.ReadCounters()
 	if err != nil {
+		desc := descSimple
+		if c.breakdown {
+			desc = descFull
+		}
 		log.Errorf("Failed to read BPF counters: %v", err)
 		ch <- prometheus.NewInvalidMetric(desc, err)
 		return
@@ -72,33 +89,51 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			app = info.App
 		}
 
-		protoName, ok := ebpfpkg.ProtoNames[key.Proto]
-		if !ok {
-			protoName = "other"
-		}
-
-		dirName, ok := ebpfpkg.DirectionNames[key.Direction]
-		if !ok {
-			dirName = "unknown"
-		}
-
-		mk := conntrackMetricKey{
-			pod:       podName,
-			namespace: namespace,
-			app:       app,
-			protocol:  protoName,
-			direction: dirName,
+		var mk conntrackMetricKey
+		if c.breakdown {
+			protoName, ok := ebpfpkg.ProtoNames[key.Proto]
+			if !ok {
+				protoName = "other"
+			}
+			dirName, ok := ebpfpkg.DirectionNames[key.Direction]
+			if !ok {
+				dirName = "unknown"
+			}
+			mk = conntrackMetricKey{
+				pod:       podName,
+				namespace: namespace,
+				app:       app,
+				protocol:  protoName,
+				direction: dirName,
+			}
+		} else {
+			mk = conntrackMetricKey{
+				pod:       podName,
+				namespace: namespace,
+				app:       app,
+			}
 		}
 		aggregated[mk] += float64(count)
 	}
 
 	for mk, total := range aggregated {
-		metric, err := prometheus.NewConstMetric(
-			desc,
-			prometheus.GaugeValue,
-			total,
-			mk.pod, mk.namespace, mk.app, mk.protocol, mk.direction,
-		)
+		var metric prometheus.Metric
+		var err error
+		if c.breakdown {
+			metric, err = prometheus.NewConstMetric(
+				descFull,
+				prometheus.GaugeValue,
+				total,
+				mk.pod, mk.namespace, mk.app, mk.protocol, mk.direction,
+			)
+		} else {
+			metric, err = prometheus.NewConstMetric(
+				descSimple,
+				prometheus.GaugeValue,
+				total,
+				mk.pod, mk.namespace, mk.app,
+			)
+		}
 		if err != nil {
 			log.Errorf("Failed to create metric: %v", err)
 			continue

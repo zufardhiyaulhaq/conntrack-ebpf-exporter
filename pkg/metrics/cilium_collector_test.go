@@ -33,7 +33,7 @@ func TestCiliumCollector_EmitsMetricsWithDirection(t *testing.T) {
 		},
 	}
 
-	c := NewCiliumCollector(reader, res)
+	c := NewCiliumCollector(reader, res, true)
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(c)
 	families, err := reg.Gather()
@@ -75,7 +75,7 @@ func TestCiliumCollector_UnresolvedIPGetsUnknownLabels(t *testing.T) {
 	}
 	res := &mockResolver{ips: map[string]resolver.PodInfo{}}
 
-	c := NewCiliumCollector(reader, res)
+	c := NewCiliumCollector(reader, res, true)
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(c)
 	families, err := reg.Gather()
@@ -105,7 +105,7 @@ func TestCiliumCollector_AggregatesMultipleUnresolvedIPs(t *testing.T) {
 	}
 	res := &mockResolver{ips: map[string]resolver.PodInfo{}}
 
-	c := NewCiliumCollector(reader, res)
+	c := NewCiliumCollector(reader, res, true)
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(c)
 	families, err := reg.Gather()
