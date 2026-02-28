@@ -1,88 +1,14 @@
 //go:build ignore
 
-/*
- * Kernel integer types required by BPF helper headers.
- * Defined here so we don't need vmlinux.h or linux/types.h
- * (which pulls in asm/types.h, unavailable in -target bpf).
- */
-typedef unsigned char      __u8;
-typedef unsigned short     __u16;
-typedef unsigned int       __u32;
-typedef unsigned long long __u64;
-typedef long long          __s64;
-
+#include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
-/*
- * Minimal kernel struct definitions for CO-RE.
- *
- * Only the fields accessed by this program are defined. At load time,
- * CO-RE resolves actual field offsets from the running kernel's BTF
- * (/sys/kernel/btf/vmlinux). This makes the program portable across
- * kernel versions without requiring vmlinux.h at compile time.
- */
-
-#define IPPROTO_TCP 6
-#define IPPROTO_UDP 17
-
-enum tcp_conntrack {
-    TCP_CONNTRACK_NONE,
-    TCP_CONNTRACK_SYN_SENT,
-    TCP_CONNTRACK_SYN_RECV,
-    TCP_CONNTRACK_ESTABLISHED,
-    TCP_CONNTRACK_FIN_WAIT,
-    TCP_CONNTRACK_CLOSE_WAIT,
-    TCP_CONNTRACK_LAST_ACK,
-    TCP_CONNTRACK_TIME_WAIT,
-    TCP_CONNTRACK_CLOSE,
-    TCP_CONNTRACK_LISTEN,
-    TCP_CONNTRACK_MAX,
-};
-
-struct ns_common {
-    unsigned int inum;
-} __attribute__((preserve_access_index));
-
-struct net {
-    struct ns_common ns;
-} __attribute__((preserve_access_index));
-
-struct nf_conntrack_tuple_dst {
-    union {
-        __u16 all;
-    } u;
-    __u8 protonum;
-} __attribute__((preserve_access_index));
-
-struct nf_conntrack_tuple {
-    struct nf_conntrack_tuple_dst dst;
-} __attribute__((preserve_access_index));
-
-struct nf_conntrack_tuple_hash {
-    struct nf_conntrack_tuple tuple;
-} __attribute__((preserve_access_index));
-
-struct nf_ct_tcp {
-    __u8 state;
-} __attribute__((preserve_access_index));
-
-union nf_conntrack_proto {
-    struct nf_ct_tcp tcp;
-} __attribute__((preserve_access_index));
-
-struct nf_conn {
-    struct nf_conntrack_tuple_hash tuplehash[2];
-    struct {
-        struct net *net;
-    } ct_net;
-    union nf_conntrack_proto proto;
-} __attribute__((preserve_access_index));
-
-/* --- End kernel type definitions --- */
+/* BPF_ANY is a #define, not in kernel BTF / vmlinux.h */
+#define BPF_ANY 0
 
 // State buckets — must match Go constants in types.go
 #define STATE_TCP_ESTABLISHED 0
@@ -135,6 +61,11 @@ static __always_inline __u32 get_netns_inode(struct nf_conn *ct) {
     return BPF_CORE_READ(ct, ct_net.net, ns.inum);
 }
 
+// Note: The decrement and delete are non-atomic. A concurrent count_insert on
+// another CPU could increment between the two operations, and the subsequent
+// delete would lose that insert. This is an accepted tradeoff — the goal is
+// finding offending pods (100K+ entries), not exact per-entry accounting.
+// Stale zero entries are harmless (userspace skips count <= 0).
 static __always_inline void count_insert(struct nf_conn *ct) {
     struct map_key key = {};
     key.netns_inode = get_netns_inode(ct);
@@ -149,11 +80,6 @@ static __always_inline void count_insert(struct nf_conn *ct) {
     }
 }
 
-// Note: The decrement and delete are non-atomic. A concurrent count_insert on
-// another CPU could increment between the two operations, and the subsequent
-// delete would lose that insert. This is an accepted tradeoff — the goal is
-// finding offending pods (100K+ entries), not exact per-entry accounting.
-// Stale zero entries are harmless (userspace skips count <= 0).
 static __always_inline void count_delete(struct nf_conn *ct) {
     struct map_key key = {};
     key.netns_inode = get_netns_inode(ct);
