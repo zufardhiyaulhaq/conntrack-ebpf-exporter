@@ -115,14 +115,14 @@ func main() {
 
 	// Register kernel conntrack collector
 	if loader != nil {
-		collector := metrics.NewCollector(loader, podResolver, metricBreakdown)
+		collector := metrics.NewCollector(loader, podResolver, metricBreakdown, nodeName)
 		prometheus.MustRegister(collector)
 		log.Info("Kernel conntrack collector registered")
 	}
 
 	// Register Cilium conntrack collector
 	if ciliumReader != nil {
-		ciliumCollector := metrics.NewCiliumCollector(ciliumReader, podResolver, metricBreakdown)
+		ciliumCollector := metrics.NewCiliumCollector(ciliumReader, podResolver, metricBreakdown, nodeName)
 		prometheus.MustRegister(ciliumCollector)
 		log.Info("Cilium conntrack collector registered")
 	}

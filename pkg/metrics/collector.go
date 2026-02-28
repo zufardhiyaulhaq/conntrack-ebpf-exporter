@@ -12,22 +12,7 @@ import (
 )
 
 const (
-	metricName = "node_conntrack_ebpf_entries_by_pod"
-	metricHelp = "Number of conntrack entries per pod, broken down by protocol and direction."
-)
-
-var descFull = prometheus.NewDesc(
-	metricName,
-	metricHelp,
-	[]string{"pod", "namespace", "app", "protocol", "direction"},
-	nil,
-)
-
-var descSimple = prometheus.NewDesc(
-	metricName,
-	"Number of conntrack entries per pod.",
-	[]string{"pod", "namespace", "app"},
-	nil,
+	conntrackMetricName = "node_conntrack_ebpf_entries_by_pod"
 )
 
 type conntrackMetricKey struct {
@@ -39,20 +24,40 @@ type Collector struct {
 	reader    ebpfpkg.MapReader
 	resolver  resolver.Resolver
 	breakdown bool
+	descFull  *prometheus.Desc
+	descSimple *prometheus.Desc
 }
 
 // NewCollector creates a new Collector. When breakdown is true, metrics include
 // protocol and direction labels; when false, only pod labels.
-func NewCollector(reader ebpfpkg.MapReader, resolver resolver.Resolver, breakdown bool) *Collector {
-	return &Collector{reader: reader, resolver: resolver, breakdown: breakdown}
+// nodeName is added as a const label on all metrics.
+func NewCollector(reader ebpfpkg.MapReader, resolver resolver.Resolver, breakdown bool, nodeName string) *Collector {
+	constLabels := prometheus.Labels{"node": nodeName}
+	return &Collector{
+		reader:    reader,
+		resolver:  resolver,
+		breakdown: breakdown,
+		descFull: prometheus.NewDesc(
+			conntrackMetricName,
+			"Number of conntrack entries per pod, broken down by protocol and direction.",
+			[]string{"pod", "namespace", "app", "protocol", "direction"},
+			constLabels,
+		),
+		descSimple: prometheus.NewDesc(
+			conntrackMetricName,
+			"Number of conntrack entries per pod.",
+			[]string{"pod", "namespace", "app"},
+			constLabels,
+		),
+	}
 }
 
 // Describe sends the metric descriptor.
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	if c.breakdown {
-		ch <- descFull
+		ch <- c.descFull
 	} else {
-		ch <- descSimple
+		ch <- c.descSimple
 	}
 }
 
@@ -60,9 +65,9 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	counters, err := c.reader.ReadCounters()
 	if err != nil {
-		desc := descSimple
+		desc := c.descSimple
 		if c.breakdown {
-			desc = descFull
+			desc = c.descFull
 		}
 		log.Errorf("Failed to read BPF counters: %v", err)
 		ch <- prometheus.NewInvalidMetric(desc, err)
@@ -121,14 +126,14 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		var err error
 		if c.breakdown {
 			metric, err = prometheus.NewConstMetric(
-				descFull,
+				c.descFull,
 				prometheus.GaugeValue,
 				total,
 				mk.pod, mk.namespace, mk.app, mk.protocol, mk.direction,
 			)
 		} else {
 			metric, err = prometheus.NewConstMetric(
-				descSimple,
+				c.descSimple,
 				prometheus.GaugeValue,
 				total,
 				mk.pod, mk.namespace, mk.app,

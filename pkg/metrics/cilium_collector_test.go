@@ -41,7 +41,7 @@ func TestCiliumCollector_EmitsMetricsWithDirection(t *testing.T) {
 		},
 	}
 
-	c := NewCiliumCollector(reader, res, true)
+	c := NewCiliumCollector(reader, res, true, "test-node")
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(c)
 	families, err := reg.Gather()
@@ -89,7 +89,7 @@ func TestCiliumCollector_UnresolvedIPGetsUnknownLabels(t *testing.T) {
 	}
 	res := &mockResolver{ips: map[string]resolver.PodInfo{}}
 
-	c := NewCiliumCollector(reader, res, true)
+	c := NewCiliumCollector(reader, res, true, "test-node")
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(c)
 	families, err := reg.Gather()
@@ -125,7 +125,7 @@ func TestCiliumCollector_AggregatesMultipleUnresolvedIPs(t *testing.T) {
 	}
 	res := &mockResolver{ips: map[string]resolver.PodInfo{}}
 
-	c := NewCiliumCollector(reader, res, true)
+	c := NewCiliumCollector(reader, res, true, "test-node")
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(c)
 	families, err := reg.Gather()
@@ -169,7 +169,7 @@ func TestCiliumCollector_EmitsDNSMetric(t *testing.T) {
 		},
 	}
 
-	c := NewCiliumCollector(reader, res, false)
+	c := NewCiliumCollector(reader, res, false, "test-node")
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(c)
 	families, err := reg.Gather()

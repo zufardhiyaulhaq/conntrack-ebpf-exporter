@@ -60,7 +60,7 @@ func TestCollector_EmitsMetricsWithDirection(t *testing.T) {
 		},
 	}
 
-	c := NewCollector(reader, res, true)
+	c := NewCollector(reader, res, true, "test-node")
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(c)
 	families, err := reg.Gather()
@@ -106,7 +106,7 @@ func TestCollector_UnresolvedIPGetsUnknownLabels(t *testing.T) {
 	}
 	res := &mockResolver{ips: map[string]resolver.PodInfo{}}
 
-	c := NewCollector(reader, res, true)
+	c := NewCollector(reader, res, true, "test-node")
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(c)
 	families, err := reg.Gather()
@@ -132,7 +132,7 @@ func TestCollector_SkipsZeroCountEntries(t *testing.T) {
 	}
 	res := &mockResolver{ips: map[string]resolver.PodInfo{}}
 
-	c := NewCollector(reader, res, true)
+	c := NewCollector(reader, res, true, "test-node")
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(c)
 	families, err := reg.Gather()
@@ -158,7 +158,7 @@ func TestCollector_AggregatesMultipleUnresolvedIPs(t *testing.T) {
 	}
 	res := &mockResolver{ips: map[string]resolver.PodInfo{}}
 
-	c := NewCollector(reader, res, true)
+	c := NewCollector(reader, res, true, "test-node")
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(c)
 	families, err := reg.Gather()

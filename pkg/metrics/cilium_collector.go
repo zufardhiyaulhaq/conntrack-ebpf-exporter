@@ -8,25 +8,9 @@ import (
 	"github.com/zufardhiyaulhaq/conntrack-ebpf-exporter/pkg/resolver"
 )
 
-var ciliumDescFull = prometheus.NewDesc(
-	"node_cilium_ct_entries_by_pod",
-	"Number of Cilium conntrack entries per pod, broken down by protocol and direction.",
-	[]string{"pod", "namespace", "app", "protocol", "direction"},
-	nil,
-)
-
-var ciliumDescSimple = prometheus.NewDesc(
-	"node_cilium_ct_entries_by_pod",
-	"Number of Cilium conntrack entries per pod.",
-	[]string{"pod", "namespace", "app"},
-	nil,
-)
-
-var ciliumDNSDesc = prometheus.NewDesc(
-	"node_cilium_ct_dns_entries_by_pod",
-	"Number of Cilium conntrack entries on port 53 (DNS) per pod.",
-	[]string{"pod", "namespace", "app"},
-	nil,
+const (
+	ciliumMetricName    = "node_cilium_ct_entries_by_pod"
+	ciliumDNSMetricName = "node_cilium_ct_dns_entries_by_pod"
 )
 
 type ciliumMetricKey struct {
@@ -42,31 +26,58 @@ type CiliumCollector struct {
 	reader    ebpfpkg.CiliumReader
 	resolver  resolver.Resolver
 	breakdown bool
+	descFull  *prometheus.Desc
+	descSimple *prometheus.Desc
+	dnsDesc   *prometheus.Desc
 }
 
 // NewCiliumCollector creates a new CiliumCollector. When breakdown is true,
 // metrics include protocol and direction labels; when false, only pod labels.
-func NewCiliumCollector(reader ebpfpkg.CiliumReader, resolver resolver.Resolver, breakdown bool) *CiliumCollector {
-	return &CiliumCollector{reader: reader, resolver: resolver, breakdown: breakdown}
+// nodeName is added as a const label on all metrics.
+func NewCiliumCollector(reader ebpfpkg.CiliumReader, resolver resolver.Resolver, breakdown bool, nodeName string) *CiliumCollector {
+	constLabels := prometheus.Labels{"node": nodeName}
+	return &CiliumCollector{
+		reader:    reader,
+		resolver:  resolver,
+		breakdown: breakdown,
+		descFull: prometheus.NewDesc(
+			ciliumMetricName,
+			"Number of Cilium conntrack entries per pod, broken down by protocol and direction.",
+			[]string{"pod", "namespace", "app", "protocol", "direction"},
+			constLabels,
+		),
+		descSimple: prometheus.NewDesc(
+			ciliumMetricName,
+			"Number of Cilium conntrack entries per pod.",
+			[]string{"pod", "namespace", "app"},
+			constLabels,
+		),
+		dnsDesc: prometheus.NewDesc(
+			ciliumDNSMetricName,
+			"Number of Cilium conntrack entries on port 53 (DNS) per pod.",
+			[]string{"pod", "namespace", "app"},
+			constLabels,
+		),
+	}
 }
 
 // Describe sends the metric descriptors.
 func (c *CiliumCollector) Describe(ch chan<- *prometheus.Desc) {
 	if c.breakdown {
-		ch <- ciliumDescFull
+		ch <- c.descFull
 	} else {
-		ch <- ciliumDescSimple
+		ch <- c.descSimple
 	}
-	ch <- ciliumDNSDesc
+	ch <- c.dnsDesc
 }
 
 // Collect reads Cilium CT maps, resolves pods by IP, aggregates by label set, and emits metrics.
 func (c *CiliumCollector) Collect(ch chan<- prometheus.Metric) {
 	result, err := c.reader.ReadCounts()
 	if err != nil {
-		desc := ciliumDescSimple
+		desc := c.descSimple
 		if c.breakdown {
-			desc = ciliumDescFull
+			desc = c.descFull
 		}
 		log.Errorf("Failed to read Cilium CT maps: %v", err)
 		ch <- prometheus.NewInvalidMetric(desc, err)
@@ -112,14 +123,14 @@ func (c *CiliumCollector) Collect(ch chan<- prometheus.Metric) {
 		var err error
 		if c.breakdown {
 			metric, err = prometheus.NewConstMetric(
-				ciliumDescFull,
+				c.descFull,
 				prometheus.GaugeValue,
 				total,
 				mk.pod, mk.namespace, mk.app, mk.protocol, mk.direction,
 			)
 		} else {
 			metric, err = prometheus.NewConstMetric(
-				ciliumDescSimple,
+				c.descSimple,
 				prometheus.GaugeValue,
 				total,
 				mk.pod, mk.namespace, mk.app,
@@ -157,7 +168,7 @@ func (c *CiliumCollector) Collect(ch chan<- prometheus.Metric) {
 
 	for mk, total := range dnsAggregated {
 		metric, err := prometheus.NewConstMetric(
-			ciliumDNSDesc,
+			c.dnsDesc,
 			prometheus.GaugeValue,
 			total,
 			mk.pod, mk.namespace, mk.app,
