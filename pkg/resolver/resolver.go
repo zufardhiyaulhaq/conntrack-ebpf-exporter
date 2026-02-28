@@ -91,6 +91,7 @@ type PodResolver struct {
 	podInodes map[string][]uint32 // "namespace/name" → list of netns inodes
 	podIPs    map[string][]string // "namespace/name" → list of pod IPs
 	proc      ProcReader
+	nodeName  string
 	mu        sync.RWMutex
 }
 
@@ -103,6 +104,7 @@ func NewPodResolver(clientset kubernetes.Interface, nodeName string, stopCh <-ch
 		podInodes: make(map[string][]uint32),
 		podIPs:    make(map[string][]string),
 		proc:      &RealProcReader{},
+		nodeName:  nodeName,
 	}
 
 	factory := informers.NewSharedInformerFactoryWithOptions(
@@ -180,10 +182,14 @@ func (r *PodResolver) handlePodAdd(pod *corev1.Pod) {
 	r.AddPod(pod.Name, pod.Namespace, app, containerIDs)
 
 	// Store pod IP for Cilium CT resolution.
-	// Skip hostNetwork pods — their PodIP is the node IP, which would
-	// overwrite the SetNodeInfo entry and misattribute all node traffic.
-	if pod.Status.PodIP != "" && !pod.Spec.HostNetwork {
-		r.AddPodIP(pod.Name, pod.Namespace, app, pod.Status.PodIP)
+	// hostNetwork pods share the node IP — attribute their traffic to the node
+	// rather than letting a random pod claim the IP.
+	if pod.Status.PodIP != "" {
+		if pod.Spec.HostNetwork {
+			r.SetNodeInfo(pod.Status.PodIP, r.nodeName)
+		} else {
+			r.AddPodIP(pod.Name, pod.Namespace, app, pod.Status.PodIP)
+		}
 	}
 }
 

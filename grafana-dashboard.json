@@ -401,7 +401,9 @@
         "legend": {
           "calcs": ["lastNotNull", "min", "max", "mean"],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "sortBy": "lastNotNull",
+          "sortDesc": true
         },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
@@ -451,7 +453,9 @@
         "legend": {
           "calcs": ["lastNotNull", "min", "max", "mean"],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "sortBy": "lastNotNull",
+          "sortDesc": true
         },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
@@ -501,7 +505,9 @@
         "legend": {
           "calcs": ["lastNotNull", "min", "max", "mean"],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "sortBy": "lastNotNull",
+          "sortDesc": true
         },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
@@ -595,7 +601,9 @@
         "legend": {
           "calcs": ["lastNotNull", "min", "max", "mean"],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "sortBy": "lastNotNull",
+          "sortDesc": true
         },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
@@ -644,7 +652,9 @@
         "legend": {
           "calcs": ["lastNotNull", "min", "max", "mean"],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "sortBy": "lastNotNull",
+          "sortDesc": true
         },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
@@ -701,7 +711,9 @@
         "legend": {
           "calcs": ["lastNotNull", "min", "max", "mean"],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "sortBy": "lastNotNull",
+          "sortDesc": true
         },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
@@ -751,7 +763,9 @@
         "legend": {
           "calcs": ["lastNotNull", "min", "max", "mean"],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "sortBy": "lastNotNull",
+          "sortDesc": true
         },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
@@ -808,7 +822,9 @@
         "legend": {
           "calcs": ["lastNotNull", "min", "max", "mean"],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "sortBy": "lastNotNull",
+          "sortDesc": true
         },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
@@ -858,7 +874,9 @@
         "legend": {
           "calcs": ["lastNotNull", "min", "max", "mean"],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "sortBy": "lastNotNull",
+          "sortDesc": true
         },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
@@ -908,7 +926,9 @@
         "legend": {
           "calcs": ["lastNotNull", "min", "max", "mean"],
           "displayMode": "table",
-          "placement": "bottom"
+          "placement": "bottom",
+          "sortBy": "lastNotNull",
+          "sortDesc": true
         },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
@@ -968,7 +988,7 @@
       {
         "current": {},
         "datasource": { "type": "prometheus", "uid": "$datasource" },
-        "definition": "label_values(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\"}, namespace)",
+        "definition": "label_values(node_cilium_ct_entries_by_pod{}, namespace)",
         "hide": 0,
         "includeAll": true,
         "label": "Namespace",
@@ -977,7 +997,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\"}, namespace)",
+          "query": "label_values(node_cilium_ct_entries_by_pod{}, namespace)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
@@ -989,7 +1009,7 @@
       {
         "current": {},
         "datasource": { "type": "prometheus", "uid": "$datasource" },
-        "definition": "label_values(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", namespace=~\"$namespace\"}, app)",
+        "definition": "label_values(node_cilium_ct_entries_by_pod{namespace=~\"$namespace\"}, app)",
         "hide": 0,
         "includeAll": true,
         "label": "App",
@@ -998,7 +1018,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(node_cilium_ct_entries_by_pod{cluster_name=~\"$cluster_name\", namespace=~\"$namespace\"}, app)",
+          "query": "label_values(node_cilium_ct_entries_by_pod{namespace=~\"$namespace\"}, app)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
