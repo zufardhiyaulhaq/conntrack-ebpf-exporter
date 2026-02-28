@@ -22,10 +22,19 @@ func (m *mockMapReader) Close() error { return nil }
 
 type mockResolver struct {
 	pods map[uint32]resolver.PodInfo
+	ips  map[string]resolver.PodInfo
 }
 
 func (m *mockResolver) Resolve(netnsInode uint32) (resolver.PodInfo, bool) {
 	info, ok := m.pods[netnsInode]
+	return info, ok
+}
+
+func (m *mockResolver) ResolveByIP(ip string) (resolver.PodInfo, bool) {
+	if m.ips == nil {
+		return resolver.PodInfo{}, false
+	}
+	info, ok := m.ips[ip]
 	return info, ok
 }
 

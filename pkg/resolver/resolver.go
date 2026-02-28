@@ -30,9 +30,10 @@ type PodInfo struct {
 	App       string
 }
 
-// Resolver resolves a netns inode to pod metadata.
+// Resolver resolves pod metadata by netns inode or pod IP.
 type Resolver interface {
 	Resolve(netnsInode uint32) (PodInfo, bool)
+	ResolveByIP(ip string) (PodInfo, bool)
 }
 
 // ProcReader abstracts /proc filesystem access for testability.
@@ -85,7 +86,9 @@ func (r *RealProcReader) ReadNetNSInode(pid int) (uint32, error) {
 // PodResolver implements Resolver using K8s informer and /proc scanning.
 type PodResolver struct {
 	cache     map[uint32]PodInfo  // netns inode → pod info
+	ipCache   map[string]PodInfo  // pod IP → pod info
 	podInodes map[string][]uint32 // "namespace/name" → list of netns inodes
+	podIPs    map[string][]string // "namespace/name" → list of pod IPs
 	proc      ProcReader
 	mu        sync.RWMutex
 }
@@ -95,7 +98,9 @@ type PodResolver struct {
 func NewPodResolver(clientset kubernetes.Interface, nodeName string, stopCh <-chan struct{}) *PodResolver {
 	r := &PodResolver{
 		cache:     make(map[uint32]PodInfo),
+		ipCache:   make(map[string]PodInfo),
 		podInodes: make(map[string][]uint32),
+		podIPs:    make(map[string][]string),
 		proc:      &RealProcReader{},
 	}
 
@@ -172,6 +177,11 @@ func (r *PodResolver) handlePodAdd(pod *corev1.Pod) {
 	}
 
 	r.AddPod(pod.Name, pod.Namespace, app, containerIDs)
+
+	// Store pod IP for Cilium CT resolution
+	if pod.Status.PodIP != "" {
+		r.AddPodIP(pod.Name, pod.Namespace, app, pod.Status.PodIP)
+	}
 }
 
 // AddPod resolves container IDs to netns inodes and caches the mapping.
@@ -208,21 +218,45 @@ func (r *PodResolver) AddPod(name, namespace, app string, containerIDs []string)
 	}
 }
 
-// RemovePod removes all netns inode mappings for the given pod.
+// AddPodIP stores the pod IP → PodInfo mapping for Cilium CT resolution.
+func (r *PodResolver) AddPodIP(name, namespace, app, podIP string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	podKey := namespace + "/" + name
+
+	// Skip if IP already cached for this pod
+	if ips, exists := r.podIPs[podKey]; exists {
+		for _, ip := range ips {
+			if ip == podIP {
+				return
+			}
+		}
+	}
+
+	info := PodInfo{Name: name, Namespace: namespace, App: app}
+	r.ipCache[podIP] = info
+	r.podIPs[podKey] = append(r.podIPs[podKey], podIP)
+	log.Debugf("Resolved pod %s/%s → IP %s", namespace, name, podIP)
+}
+
+// RemovePod removes all netns inode and IP mappings for the given pod.
 func (r *PodResolver) RemovePod(name, namespace string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	podKey := namespace + "/" + name
-	inodes, ok := r.podInodes[podKey]
-	if !ok {
-		return
-	}
 
-	for _, inode := range inodes {
+	for _, inode := range r.podInodes[podKey] {
 		delete(r.cache, inode)
 	}
 	delete(r.podInodes, podKey)
+
+	for _, ip := range r.podIPs[podKey] {
+		delete(r.ipCache, ip)
+	}
+	delete(r.podIPs, podKey)
+
 	log.Debugf("Removed pod %s/%s from resolver", namespace, name)
 }
 
@@ -231,5 +265,13 @@ func (r *PodResolver) Resolve(netnsInode uint32) (PodInfo, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	info, ok := r.cache[netnsInode]
+	return info, ok
+}
+
+// ResolveByIP looks up pod metadata by pod IP address.
+func (r *PodResolver) ResolveByIP(ip string) (PodInfo, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	info, ok := r.ipCache[ip]
 	return info, ok
 }

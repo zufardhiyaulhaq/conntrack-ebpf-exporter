@@ -47,12 +47,21 @@ func main() {
 
 	log.Infof("Starting conntrack-ebpf-exporter on node %s", nodeName)
 
-	// Load BPF program and attach kprobes
+	// Load kernel conntrack BPF program
 	loader, err := ebpfpkg.NewLoader()
 	if err != nil {
-		log.Fatalf("Failed to load BPF program: %v", err)
+		log.Warnf("Kernel conntrack BPF loader failed (metrics will be empty): %v", err)
+	} else {
+		defer loader.Close()
 	}
-	defer loader.Close()
+
+	// Open Cilium conntrack maps
+	ciliumReader, err := ebpfpkg.NewCiliumReader()
+	if err != nil {
+		log.Warnf("Cilium CT reader not available (metrics will be empty): %v", err)
+	} else {
+		defer ciliumReader.Close()
+	}
 
 	// Create K8s client (in-cluster config)
 	config, err := rest.InClusterConfig()
@@ -68,9 +77,19 @@ func main() {
 	stopCh := make(chan struct{})
 	podResolver := resolver.NewPodResolver(clientset, nodeName, stopCh)
 
-	// Register Prometheus collector
-	collector := metrics.NewCollector(loader, podResolver)
-	prometheus.MustRegister(collector)
+	// Register kernel conntrack collector
+	if loader != nil {
+		collector := metrics.NewCollector(loader, podResolver)
+		prometheus.MustRegister(collector)
+		log.Info("Kernel conntrack collector registered")
+	}
+
+	// Register Cilium conntrack collector
+	if ciliumReader != nil {
+		ciliumCollector := metrics.NewCiliumCollector(ciliumReader, podResolver)
+		prometheus.MustRegister(ciliumCollector)
+		log.Info("Cilium conntrack collector registered")
+	}
 
 	// Start HTTP server
 	mux := http.NewServeMux()
