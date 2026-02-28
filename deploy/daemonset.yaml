@@ -50,7 +50,7 @@ spec:
       hostPID: true
       containers:
         - name: exporter
-          image: conntrack-ebpf-exporter:latest
+          image: ghcr.io/zufardhiyaulhaq/conntrack-ebpf-exporter:master
           securityContext:
             privileged: true
           env:
@@ -87,17 +87,3 @@ spec:
               memory: 128Mi
       tolerations:
         - operator: Exists
----
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMServiceScrape
-metadata:
-  name: conntrack-ebpf-exporter
-  namespace: monitoring
-spec:
-  selector:
-    matchLabels:
-      app: conntrack-ebpf-exporter
-  endpoints:
-    - port: "9990"
-      interval: 30s
-      path: /metrics
