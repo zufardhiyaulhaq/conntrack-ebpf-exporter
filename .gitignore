@@ -1,0 +1,8 @@
+# Binaries
+conntrack-ebpf-exporter
+
+# Go
+vendor/
+
+# AI
+.claude
