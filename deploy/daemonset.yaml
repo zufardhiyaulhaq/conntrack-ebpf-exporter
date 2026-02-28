@@ -51,6 +51,7 @@ spec:
       containers:
         - name: exporter
           image: ghcr.io/zufardhiyaulhaq/conntrack-ebpf-exporter:master
+          imagePullPolicy: Always
           securityContext:
             privileged: true
           env:

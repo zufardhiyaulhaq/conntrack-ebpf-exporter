@@ -27,9 +27,11 @@ func NewLoader() (*Loader, error) {
 		return nil, fmt.Errorf("BTF not available at /sys/kernel/btf/vmlinux — kernel >= 5.8 with CONFIG_DEBUG_INFO_BTF required")
 	}
 
-	// Remove memlock rlimit (required on kernels < 5.11, no-op on newer)
+	// Remove memlock rlimit (required on kernels < 5.11, no-op on newer).
+	// Non-fatal: some container runtimes block setrlimit even in privileged mode,
+	// and kernels >= 5.11 (or backported 5.10) use cgroup-based memlock accounting.
 	if err := rlimit.RemoveMemlock(); err != nil {
-		return nil, fmt.Errorf("removing memlock rlimit: %w", err)
+		log.Warnf("Could not remove memlock rlimit (may be fine on kernel >= 5.11): %v", err)
 	}
 
 	// Load BPF objects (CO-RE relocations applied automatically from kernel BTF)
