@@ -55,11 +55,22 @@ func main() {
 		defer loader.Close()
 	}
 
-	// Open Cilium conntrack maps
-	ciliumReader, err := ebpfpkg.NewCiliumReader()
+	// Open Cilium conntrack maps — prefer BPF iterator (kernel-side aggregation)
+	// with fallback to userspace iteration.
+	var ciliumReader ebpfpkg.CiliumReader
+	iterReader, err := ebpfpkg.NewCiliumIterReader()
 	if err != nil {
-		log.Warnf("Cilium CT reader not available (metrics will be empty): %v", err)
+		log.Warnf("BPF iterator not available, falling back to userspace: %v", err)
+		mapReader, err := ebpfpkg.NewCiliumReader()
+		if err != nil {
+			log.Warnf("Cilium CT reader not available (metrics will be empty): %v", err)
+		} else {
+			ciliumReader = mapReader
+		}
 	} else {
+		ciliumReader = iterReader
+	}
+	if ciliumReader != nil {
 		defer ciliumReader.Close()
 	}
 
