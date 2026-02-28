@@ -1,6 +1,16 @@
 //go:build ignore
 
-#include <linux/types.h>
+/*
+ * Kernel integer types required by BPF helper headers.
+ * Defined here so we don't need vmlinux.h or linux/types.h
+ * (which pulls in asm/types.h, unavailable in -target bpf).
+ */
+typedef unsigned char      __u8;
+typedef unsigned short     __u16;
+typedef unsigned int       __u32;
+typedef unsigned long long __u64;
+typedef long long          __s64;
+
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
@@ -8,7 +18,7 @@
 char __license[] SEC("license") = "Dual MIT/GPL";
 
 /*
- * Minimal kernel type definitions for CO-RE.
+ * Minimal kernel struct definitions for CO-RE.
  *
  * Only the fields accessed by this program are defined. At load time,
  * CO-RE resolves actual field offsets from the running kernel's BTF
