@@ -179,8 +179,10 @@ func (r *PodResolver) handlePodAdd(pod *corev1.Pod) {
 
 	r.AddPod(pod.Name, pod.Namespace, app, containerIDs)
 
-	// Store pod IP for Cilium CT resolution
-	if pod.Status.PodIP != "" {
+	// Store pod IP for Cilium CT resolution.
+	// Skip hostNetwork pods — their PodIP is the node IP, which would
+	// overwrite the SetNodeInfo entry and misattribute all node traffic.
+	if pod.Status.PodIP != "" && !pod.Spec.HostNetwork {
 		r.AddPodIP(pod.Name, pod.Namespace, app, pod.Status.PodIP)
 	}
 }

@@ -1,0 +1,15 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: conntrack-ebpf-exporter
+  namespace: observability
+  labels:
+    app: conntrack-ebpf-exporter
+spec:
+  selector:
+    matchLabels:
+      app: conntrack-ebpf-exporter
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
