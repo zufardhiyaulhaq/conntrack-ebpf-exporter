@@ -154,13 +154,13 @@ func NewPodResolver(clientset kubernetes.Interface, nodeName string, stopCh <-ch
 }
 
 func (r *PodResolver) handlePodAdd(pod *corev1.Pod) {
-	app := pod.Labels["app"]
-	if app == "" {
-		app = pod.Labels["app.kubernetes.io/name"]
-	}
-	if app == "" {
-		app = "unknown"
-	}
+	app := firstNonEmpty(pod.Labels,
+		"app",
+		"app.kubernetes.io/name",
+		"k8s-app",
+		"app.kubernetes.io/component",
+		"component",
+	)
 
 	var containerIDs []string
 	for _, cs := range pod.Status.ContainerStatuses {
@@ -299,6 +299,17 @@ func (r *PodResolver) ResolveByIP(ip string) (PodInfo, bool) {
 	defer r.mu.RUnlock()
 	info, ok := r.ipCache[ip]
 	return info, ok
+}
+
+// firstNonEmpty returns the value of the first label key that exists and is non-empty.
+// Returns "unknown" if none match.
+func firstNonEmpty(labels map[string]string, keys ...string) string {
+	for _, k := range keys {
+		if v := labels[k]; v != "" {
+			return v
+		}
+	}
+	return "unknown"
 }
 
 // removeString removes the first occurrence of s from the slice.
