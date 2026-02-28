@@ -14,11 +14,24 @@ var ProtoNames = map[uint8]string{
 	ProtoOther: "other",
 }
 
+// Direction constants — must match BPF C defines in conntrack.c.
+const (
+	DirectionSource uint8 = 0
+	DirectionDest   uint8 = 1
+)
+
+// DirectionNames maps direction constants to Prometheus label values.
+var DirectionNames = map[uint8]string{
+	DirectionSource: "source",
+	DirectionDest:   "destination",
+}
+
 // MapKey matches the BPF map key struct in conntrack.c.
 type MapKey struct {
-	NetnsInode uint32
-	Proto      uint8
-	Pad        [3]uint8
+	IP        uint32
+	Proto     uint8
+	Direction uint8
+	Pad       [2]uint8
 }
 
 // MapReader reads counters from the BPF map.

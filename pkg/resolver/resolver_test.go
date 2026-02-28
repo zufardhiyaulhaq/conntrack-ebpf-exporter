@@ -204,3 +204,29 @@ func TestRemovePod_DoesNotDeleteRecycledIP(t *testing.T) {
 		t.Errorf("expected new-pod, got %s", info.Name)
 	}
 }
+
+func TestSetNodeInfo(t *testing.T) {
+	r := &PodResolver{
+		cache:     make(map[uint32]PodInfo),
+		ipCache:   make(map[string]PodInfo),
+		podInodes: make(map[string][]uint32),
+		podIPs:    make(map[string][]string),
+		mu:        sync.RWMutex{},
+	}
+
+	r.SetNodeInfo("192.168.1.10", "node-abc")
+
+	info, ok := r.ResolveByIP("192.168.1.10")
+	if !ok {
+		t.Fatal("expected node IP to resolve")
+	}
+	if info.Name != "node" {
+		t.Errorf("expected name 'node', got %s", info.Name)
+	}
+	if info.Namespace != "kube-system" {
+		t.Errorf("expected namespace 'kube-system', got %s", info.Namespace)
+	}
+	if info.App != "node-abc" {
+		t.Errorf("expected app 'node-abc', got %s", info.App)
+	}
+}

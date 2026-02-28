@@ -27,7 +27,7 @@ type ciliumCT4Tuple struct {
 	Flags      uint8
 }
 
-// CiliumMapReader reads Cilium's conntrack BPF maps and counts entries per source IP.
+// CiliumMapReader reads Cilium's conntrack BPF maps and counts entries per source and destination IP.
 type CiliumMapReader struct {
 	ct4Map  *ebpf.Map
 	any4Map *ebpf.Map
@@ -74,8 +74,8 @@ func findBPFMapByName(name string) (*ebpf.Map, error) {
 }
 
 // ReadCounts iterates Cilium's CT maps and returns entry counts grouped by
-// source pod IP and protocol. Only original-direction entries are counted
-// to avoid double-counting (Cilium stores both original and reply entries).
+// IP, protocol, and direction. Each original-direction CT entry produces two
+// count keys: one for the source IP and one for the destination IP.
 func (r *CiliumMapReader) ReadCounts() (map[CiliumCountKey]int64, error) {
 	result := make(map[CiliumCountKey]int64)
 
@@ -104,7 +104,8 @@ func (r *CiliumMapReader) iterateMap(m *ebpf.Map, result map[CiliumCountKey]int6
 			continue
 		}
 
-		podIP := net.IPv4(tuple.SourceAddr[0], tuple.SourceAddr[1], tuple.SourceAddr[2], tuple.SourceAddr[3])
+		sourceIP := net.IPv4(tuple.SourceAddr[0], tuple.SourceAddr[1], tuple.SourceAddr[2], tuple.SourceAddr[3])
+		destIP := net.IPv4(tuple.DestAddr[0], tuple.DestAddr[1], tuple.DestAddr[2], tuple.DestAddr[3])
 
 		var proto string
 		switch tuple.NextHdr {
@@ -116,8 +117,10 @@ func (r *CiliumMapReader) iterateMap(m *ebpf.Map, result map[CiliumCountKey]int6
 			proto = "other"
 		}
 
-		key := CiliumCountKey{SourceIP: podIP.String(), Protocol: proto}
-		result[key]++
+		srcKey := CiliumCountKey{IP: sourceIP.String(), Protocol: proto, Direction: "source"}
+		dstKey := CiliumCountKey{IP: destIP.String(), Protocol: proto, Direction: "destination"}
+		result[srcKey]++
+		result[dstKey]++
 	}
 
 	if err := iter.Err(); err != nil {

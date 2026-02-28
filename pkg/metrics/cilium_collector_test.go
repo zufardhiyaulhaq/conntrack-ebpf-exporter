@@ -20,11 +20,11 @@ func (m *mockCiliumReader) ReadCounts() (map[ebpfpkg.CiliumCountKey]int64, error
 
 func (m *mockCiliumReader) Close() error { return nil }
 
-func TestCiliumCollector_EmitsMetricsForKnownPod(t *testing.T) {
+func TestCiliumCollector_EmitsMetricsWithDirection(t *testing.T) {
 	reader := &mockCiliumReader{
 		counts: map[ebpfpkg.CiliumCountKey]int64{
-			{SourceIP: "10.0.1.5", Protocol: "tcp"}: 100,
-			{SourceIP: "10.0.1.5", Protocol: "udp"}: 20,
+			{IP: "10.0.1.5", Protocol: "tcp", Direction: "source"}:      100,
+			{IP: "10.0.1.5", Protocol: "tcp", Direction: "destination"}: 50,
 		},
 	}
 	res := &mockResolver{
@@ -50,14 +50,27 @@ func TestCiliumCollector_EmitsMetricsForKnownPod(t *testing.T) {
 		t.Errorf("unexpected metric name: %s", *family.Name)
 	}
 	if len(family.Metric) != 2 {
-		t.Errorf("expected 2 metrics, got %d", len(family.Metric))
+		t.Errorf("expected 2 metrics (source + destination), got %d", len(family.Metric))
+	}
+
+	// Verify direction label exists
+	for _, metric := range family.Metric {
+		hasDirection := false
+		for _, label := range metric.Label {
+			if *label.Name == "direction" {
+				hasDirection = true
+			}
+		}
+		if !hasDirection {
+			t.Error("expected direction label on metric")
+		}
 	}
 }
 
 func TestCiliumCollector_UnresolvedIPGetsUnknownLabels(t *testing.T) {
 	reader := &mockCiliumReader{
 		counts: map[ebpfpkg.CiliumCountKey]int64{
-			{SourceIP: "10.0.99.99", Protocol: "tcp"}: 50,
+			{IP: "10.0.99.99", Protocol: "tcp", Direction: "source"}: 50,
 		},
 	}
 	res := &mockResolver{ips: map[string]resolver.PodInfo{}}
@@ -85,9 +98,9 @@ func TestCiliumCollector_UnresolvedIPGetsUnknownLabels(t *testing.T) {
 func TestCiliumCollector_AggregatesMultipleUnresolvedIPs(t *testing.T) {
 	reader := &mockCiliumReader{
 		counts: map[ebpfpkg.CiliumCountKey]int64{
-			{SourceIP: "10.0.99.1", Protocol: "tcp"}: 30,
-			{SourceIP: "10.0.99.2", Protocol: "tcp"}: 20,
-			{SourceIP: "10.0.99.3", Protocol: "tcp"}: 50,
+			{IP: "10.0.99.1", Protocol: "tcp", Direction: "source"}: 30,
+			{IP: "10.0.99.2", Protocol: "tcp", Direction: "source"}: 20,
+			{IP: "10.0.99.3", Protocol: "tcp", Direction: "source"}: 50,
 		},
 	}
 	res := &mockResolver{ips: map[string]resolver.PodInfo{}}
@@ -104,7 +117,7 @@ func TestCiliumCollector_AggregatesMultipleUnresolvedIPs(t *testing.T) {
 		t.Fatal("expected metric family")
 	}
 
-	// Three unresolved IPs with same protocol should aggregate into one metric
+	// Three unresolved IPs with same protocol and direction should aggregate into one metric
 	if len(families[0].Metric) != 1 {
 		t.Errorf("expected 1 aggregated metric for unresolved IPs, got %d", len(families[0].Metric))
 	}

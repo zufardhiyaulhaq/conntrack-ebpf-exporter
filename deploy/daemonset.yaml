@@ -59,6 +59,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
             - name: METRICS_PORT
               value: "9990"
             - name: LOG_LEVEL

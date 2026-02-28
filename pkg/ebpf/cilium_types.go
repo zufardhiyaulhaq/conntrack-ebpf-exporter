@@ -1,9 +1,10 @@
 package ebpf
 
-// CiliumCountKey aggregates Cilium conntrack entries by source IP and protocol.
+// CiliumCountKey aggregates Cilium conntrack entries by IP, protocol, and direction.
 type CiliumCountKey struct {
-	SourceIP string // e.g. "10.0.1.2"
-	Protocol string // "tcp", "udp", "other"
+	IP        string // source or destination IP
+	Protocol  string // "tcp", "udp", "other"
+	Direction string // "source" or "destination"
 }
 
 // CiliumReader reads conntrack entry counts from Cilium's BPF CT maps.

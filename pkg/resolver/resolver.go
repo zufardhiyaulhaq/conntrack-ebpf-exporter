@@ -277,6 +277,14 @@ func (r *PodResolver) RemovePod(name, namespace string) {
 	log.Debugf("Removed pod %s/%s from resolver", namespace, name)
 }
 
+// SetNodeInfo registers the node's IP so traffic from/to the node itself
+// is attributed as pod="node", namespace="kube-system", app=<nodeName>.
+func (r *PodResolver) SetNodeInfo(nodeIP, nodeName string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.ipCache[nodeIP] = PodInfo{Name: "node", Namespace: "kube-system", App: nodeName}
+}
+
 // Resolve looks up pod metadata by netns inode.
 func (r *PodResolver) Resolve(netnsInode uint32) (PodInfo, bool) {
 	r.mu.RLock()

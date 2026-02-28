@@ -115,7 +115,7 @@ func NewLoader() (*Loader, error) {
 	return &Loader{coll: coll, kpInsert: kpInsert, kpDelete: kpDelete}, nil
 }
 
-// ReadCounters iterates the BPF hash map and returns all {netns_inode, proto} → count pairs.
+// ReadCounters iterates the BPF hash map and returns all {ip, proto, direction} → count pairs.
 func (l *Loader) ReadCounters() (map[MapKey]int64, error) {
 	result := make(map[MapKey]int64)
 

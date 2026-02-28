@@ -77,6 +77,13 @@ func main() {
 	stopCh := make(chan struct{})
 	podResolver := resolver.NewPodResolver(clientset, nodeName, stopCh)
 
+	// Register node IP for node traffic attribution
+	nodeIP := os.Getenv("NODE_IP")
+	if nodeIP != "" {
+		podResolver.SetNodeInfo(nodeIP, nodeName)
+		log.Infof("Node IP %s registered for attribution", nodeIP)
+	}
+
 	// Register kernel conntrack collector
 	if loader != nil {
 		collector := metrics.NewCollector(loader, podResolver)

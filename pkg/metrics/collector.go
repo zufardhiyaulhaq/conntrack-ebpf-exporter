@@ -1,6 +1,9 @@
 package metrics
 
 import (
+	"encoding/binary"
+	"fmt"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
@@ -10,18 +13,18 @@ import (
 
 const (
 	metricName = "node_conntrack_ebpf_entries_by_pod"
-	metricHelp = "Number of conntrack entries per pod, broken down by protocol."
+	metricHelp = "Number of conntrack entries per pod, broken down by protocol and direction."
 )
 
 var desc = prometheus.NewDesc(
 	metricName,
 	metricHelp,
-	[]string{"pod", "namespace", "app", "protocol"},
+	[]string{"pod", "namespace", "app", "protocol", "direction"},
 	nil,
 )
 
 type conntrackMetricKey struct {
-	pod, namespace, app, protocol string
+	pod, namespace, app, protocol, direction string
 }
 
 // Collector implements prometheus.Collector for per-pod conntrack metrics.
@@ -40,7 +43,7 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- desc
 }
 
-// Collect reads BPF counters, resolves pods, aggregates by label set, and emits metrics.
+// Collect reads BPF counters, resolves pods by IP, aggregates by label set, and emits metrics.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	counters, err := c.reader.ReadCounters()
 	if err != nil {
@@ -56,11 +59,13 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 
+		ip := uint32ToIP(key.IP)
+
 		podName := "unknown"
 		namespace := "unknown"
 		app := "unknown"
 
-		info, ok := c.resolver.Resolve(key.NetnsInode)
+		info, ok := c.resolver.ResolveByIP(ip)
 		if ok {
 			podName = info.Name
 			namespace = info.Namespace
@@ -72,7 +77,18 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			protoName = "other"
 		}
 
-		mk := conntrackMetricKey{pod: podName, namespace: namespace, app: app, protocol: protoName}
+		dirName, ok := ebpfpkg.DirectionNames[key.Direction]
+		if !ok {
+			dirName = "unknown"
+		}
+
+		mk := conntrackMetricKey{
+			pod:       podName,
+			namespace: namespace,
+			app:       app,
+			protocol:  protoName,
+			direction: dirName,
+		}
 		aggregated[mk] += float64(count)
 	}
 
@@ -81,7 +97,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			desc,
 			prometheus.GaugeValue,
 			total,
-			mk.pod, mk.namespace, mk.app, mk.protocol,
+			mk.pod, mk.namespace, mk.app, mk.protocol, mk.direction,
 		)
 		if err != nil {
 			log.Errorf("Failed to create metric: %v", err)
@@ -89,4 +105,11 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		}
 		ch <- metric
 	}
+}
+
+// uint32ToIP converts a uint32 in network byte order to a dotted-decimal IP string.
+func uint32ToIP(ip uint32) string {
+	b := make([]byte, 4)
+	binary.BigEndian.PutUint32(b, ip)
+	return fmt.Sprintf("%d.%d.%d.%d", b[0], b[1], b[2], b[3])
 }
