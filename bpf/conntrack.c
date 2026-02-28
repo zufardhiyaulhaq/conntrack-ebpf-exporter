@@ -1,5 +1,6 @@
 //go:build ignore
 
+#include <linux/types.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
@@ -14,11 +15,6 @@ char __license[] SEC("license") = "Dual MIT/GPL";
  * (/sys/kernel/btf/vmlinux). This makes the program portable across
  * kernel versions without requiring vmlinux.h at compile time.
  */
-
-typedef unsigned char __u8;
-typedef unsigned short __u16;
-typedef unsigned int __u32;
-typedef long long __s64;
 
 #define IPPROTO_TCP 6
 #define IPPROTO_UDP 17
