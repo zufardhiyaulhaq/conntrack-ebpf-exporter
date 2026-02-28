@@ -1,29 +1,23 @@
 package ebpf
 
-// State bucket constants — must match BPF C defines.
+// Protocol bucket constants — must match BPF C defines in conntrack.c.
 const (
-	StateTCPEstablished uint8 = 0
-	StateTCPTimeWait    uint8 = 1
-	StateTCPCloseWait   uint8 = 2
-	StateTCPOther       uint8 = 3
-	StateUDP            uint8 = 4
-	StateOther          uint8 = 5
+	ProtoTCP   uint8 = 0
+	ProtoUDP   uint8 = 1
+	ProtoOther uint8 = 2
 )
 
-// StateNames maps state bucket constants to human-readable Prometheus label values.
-var StateNames = map[uint8]string{
-	StateTCPEstablished: "tcp_established",
-	StateTCPTimeWait:    "tcp_time_wait",
-	StateTCPCloseWait:   "tcp_close_wait",
-	StateTCPOther:       "tcp_other",
-	StateUDP:            "udp",
-	StateOther:          "other",
+// ProtoNames maps protocol bucket constants to Prometheus label values.
+var ProtoNames = map[uint8]string{
+	ProtoTCP:   "tcp",
+	ProtoUDP:   "udp",
+	ProtoOther: "other",
 }
 
-// MapKey matches the BPF map key struct (generated as conntrackMapKey by bpf2go).
+// MapKey matches the BPF map key struct in conntrack.c.
 type MapKey struct {
 	NetnsInode uint32
-	State      uint8
+	Proto      uint8
 	Pad        [3]uint8
 }
 

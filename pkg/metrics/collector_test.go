@@ -41,8 +41,8 @@ func (m *mockResolver) ResolveByIP(ip string) (resolver.PodInfo, bool) {
 func TestCollector_EmitsMetricsForKnownPod(t *testing.T) {
 	reader := &mockMapReader{
 		counters: map[ebpfpkg.MapKey]int64{
-			{NetnsInode: 100, State: ebpfpkg.StateTCPEstablished}: 42,
-			{NetnsInode: 100, State: ebpfpkg.StateUDP}:            15,
+			{NetnsInode: 100, Proto: ebpfpkg.ProtoTCP}: 42,
+			{NetnsInode: 100, Proto: ebpfpkg.ProtoUDP}: 15,
 		},
 	}
 	res := &mockResolver{
@@ -53,7 +53,6 @@ func TestCollector_EmitsMetricsForKnownPod(t *testing.T) {
 
 	c := NewCollector(reader, res)
 
-	// Use a fresh registry to collect metrics
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(c)
 	families, err := reg.Gather()
@@ -77,7 +76,7 @@ func TestCollector_EmitsMetricsForKnownPod(t *testing.T) {
 func TestCollector_UnresolvedNetnsGetsUnknownLabels(t *testing.T) {
 	reader := &mockMapReader{
 		counters: map[ebpfpkg.MapKey]int64{
-			{NetnsInode: 999, State: ebpfpkg.StateUDP}: 10,
+			{NetnsInode: 999, Proto: ebpfpkg.ProtoUDP}: 10,
 		},
 	}
 	res := &mockResolver{pods: map[uint32]resolver.PodInfo{}}
@@ -120,5 +119,34 @@ func TestCollector_SkipsZeroCountEntries(t *testing.T) {
 		if len(f.Metric) > 0 {
 			t.Errorf("expected no metrics for empty counters, got %d", len(f.Metric))
 		}
+	}
+}
+
+func TestCollector_AggregatesMultipleUnresolvedNetns(t *testing.T) {
+	reader := &mockMapReader{
+		counters: map[ebpfpkg.MapKey]int64{
+			{NetnsInode: 888, Proto: ebpfpkg.ProtoTCP}: 10,
+			{NetnsInode: 999, Proto: ebpfpkg.ProtoTCP}: 20,
+		},
+	}
+	res := &mockResolver{pods: map[uint32]resolver.PodInfo{}}
+
+	c := NewCollector(reader, res)
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(c)
+	families, err := reg.Gather()
+	if err != nil {
+		t.Fatalf("gather error: %v", err)
+	}
+
+	if len(families) == 0 {
+		t.Fatal("expected metric family")
+	}
+
+	if len(families[0].Metric) != 1 {
+		t.Errorf("expected 1 aggregated metric for unresolved netns, got %d", len(families[0].Metric))
+	}
+	if *families[0].Metric[0].Gauge.Value != 30 {
+		t.Errorf("expected aggregated value 30, got %v", *families[0].Metric[0].Gauge.Value)
 	}
 }

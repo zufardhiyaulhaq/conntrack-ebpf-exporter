@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
@@ -56,11 +57,20 @@ func NewLoader() (*Loader, error) {
 
 	// Compile BPF program against the kernel-matched vmlinux.h
 	log.Info("Compiling BPF program...")
+	targetArch := "x86"
+	switch runtime.GOARCH {
+	case "arm64":
+		targetArch = "arm64"
+	case "s390x":
+		targetArch = "s390"
+	case "ppc64le":
+		targetArch = "powerpc"
+	}
 	cmd = exec.Command("clang",
 		"-O2", "-g",
 		"-target", "bpf",
-		"-D__TARGET_ARCH_x86",
-		"-I/tmp",       // vmlinux.h
+		"-D__TARGET_ARCH_"+targetArch,
+		"-I/tmp",         // vmlinux.h
 		"-I/usr/include", // bpf/bpf_helpers.h etc.
 		"-c", bpfSourcePath,
 		"-o", compiledPath,
@@ -105,7 +115,7 @@ func NewLoader() (*Loader, error) {
 	return &Loader{coll: coll, kpInsert: kpInsert, kpDelete: kpDelete}, nil
 }
 
-// ReadCounters iterates the BPF hash map and returns all {netns_inode, state} → count pairs.
+// ReadCounters iterates the BPF hash map and returns all {netns_inode, proto} → count pairs.
 func (l *Loader) ReadCounters() (map[MapKey]int64, error) {
 	result := make(map[MapKey]int64)
 

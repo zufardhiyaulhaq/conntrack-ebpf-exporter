@@ -146,3 +146,61 @@ func TestResolveByIP(t *testing.T) {
 		t.Fatal("expected unknown IP to not resolve")
 	}
 }
+
+func TestAddPodIP_RecycledIPCleansUpOldPod(t *testing.T) {
+	r := &PodResolver{
+		cache: make(map[uint32]PodInfo),
+		ipCache: map[string]PodInfo{
+			"10.0.1.5": {Name: "old-pod", Namespace: "default", App: "old"},
+		},
+		podInodes: make(map[string][]uint32),
+		podIPs: map[string][]string{
+			"default/old-pod": {"10.0.1.5"},
+		},
+		mu: sync.RWMutex{},
+	}
+
+	// New pod gets the same IP (recycled)
+	r.AddPodIP("new-pod", "default", "new", "10.0.1.5")
+
+	// IP should now resolve to new pod
+	info, ok := r.ResolveByIP("10.0.1.5")
+	if !ok {
+		t.Fatal("expected IP to resolve")
+	}
+	if info.Name != "new-pod" {
+		t.Errorf("expected new-pod, got %s", info.Name)
+	}
+
+	// Old pod's IP list should be cleaned up
+	if ips := r.podIPs["default/old-pod"]; len(ips) != 0 {
+		t.Errorf("expected old pod IP list to be empty, got %v", ips)
+	}
+}
+
+func TestRemovePod_DoesNotDeleteRecycledIP(t *testing.T) {
+	r := &PodResolver{
+		cache: make(map[uint32]PodInfo),
+		ipCache: map[string]PodInfo{
+			// IP was recycled: ipCache points to new-pod
+			"10.0.1.5": {Name: "new-pod", Namespace: "default", App: "new"},
+		},
+		podInodes: make(map[string][]uint32),
+		podIPs: map[string][]string{
+			// But old-pod's list still references the IP (stale)
+			"default/old-pod": {"10.0.1.5"},
+		},
+		mu: sync.RWMutex{},
+	}
+
+	// Removing old-pod should NOT delete the IP mapping (it belongs to new-pod now)
+	r.RemovePod("old-pod", "default")
+
+	info, ok := r.ResolveByIP("10.0.1.5")
+	if !ok {
+		t.Fatal("expected IP to still resolve after removing old pod")
+	}
+	if info.Name != "new-pod" {
+		t.Errorf("expected new-pod, got %s", info.Name)
+	}
+}

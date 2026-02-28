@@ -15,6 +15,10 @@ var ciliumDesc = prometheus.NewDesc(
 	nil,
 )
 
+type ciliumMetricKey struct {
+	pod, namespace, app, protocol string
+}
+
 // CiliumCollector implements prometheus.Collector for per-pod Cilium CT metrics.
 type CiliumCollector struct {
 	reader   ebpfpkg.CiliumReader
@@ -31,7 +35,7 @@ func (c *CiliumCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- ciliumDesc
 }
 
-// Collect reads Cilium CT maps, resolves pods by IP, and emits metrics.
+// Collect reads Cilium CT maps, resolves pods by IP, aggregates by label set, and emits metrics.
 func (c *CiliumCollector) Collect(ch chan<- prometheus.Metric) {
 	counts, err := c.reader.ReadCounts()
 	if err != nil {
@@ -39,6 +43,8 @@ func (c *CiliumCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.NewInvalidMetric(ciliumDesc, err)
 		return
 	}
+
+	aggregated := make(map[ciliumMetricKey]float64)
 
 	for key, count := range counts {
 		if count <= 0 {
@@ -56,17 +62,21 @@ func (c *CiliumCollector) Collect(ch chan<- prometheus.Metric) {
 			app = info.App
 		}
 
+		mk := ciliumMetricKey{pod: podName, namespace: namespace, app: app, protocol: key.Protocol}
+		aggregated[mk] += float64(count)
+	}
+
+	for mk, total := range aggregated {
 		metric, err := prometheus.NewConstMetric(
 			ciliumDesc,
 			prometheus.GaugeValue,
-			float64(count),
-			podName, namespace, app, key.Protocol,
+			total,
+			mk.pod, mk.namespace, mk.app, mk.protocol,
 		)
 		if err != nil {
 			log.Errorf("Failed to create Cilium metric: %v", err)
 			continue
 		}
-
 		ch <- metric
 	}
 }

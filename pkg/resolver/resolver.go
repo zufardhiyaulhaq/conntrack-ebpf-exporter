@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -105,7 +106,7 @@ func NewPodResolver(clientset kubernetes.Interface, nodeName string, stopCh <-ch
 	}
 
 	factory := informers.NewSharedInformerFactoryWithOptions(
-		clientset, 0,
+		clientset, 5*time.Minute,
 		informers.WithTweakListOptions(func(opts *metav1.ListOptions) {
 			opts.FieldSelector = "spec.nodeName=" + nodeName
 		}),
@@ -219,6 +220,7 @@ func (r *PodResolver) AddPod(name, namespace, app string, containerIDs []string)
 }
 
 // AddPodIP stores the pod IP → PodInfo mapping for Cilium CT resolution.
+// If the IP was previously mapped to a different pod, the old mapping is cleaned up.
 func (r *PodResolver) AddPodIP(name, namespace, app, podIP string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -231,6 +233,15 @@ func (r *PodResolver) AddPodIP(name, namespace, app, podIP string) {
 			if ip == podIP {
 				return
 			}
+		}
+	}
+
+	// If this IP was previously mapped to a different pod, clean up the old mapping
+	if oldInfo, exists := r.ipCache[podIP]; exists {
+		oldKey := oldInfo.Namespace + "/" + oldInfo.Name
+		if oldKey != podKey {
+			r.podIPs[oldKey] = removeString(r.podIPs[oldKey], podIP)
+			log.Debugf("IP %s recycled from pod %s to %s", podIP, oldKey, podKey)
 		}
 	}
 
@@ -253,7 +264,13 @@ func (r *PodResolver) RemovePod(name, namespace string) {
 	delete(r.podInodes, podKey)
 
 	for _, ip := range r.podIPs[podKey] {
-		delete(r.ipCache, ip)
+		// Only delete from ipCache if the mapping still belongs to this pod.
+		// The IP may have been recycled to another pod already.
+		if info, exists := r.ipCache[ip]; exists {
+			if info.Namespace+"/"+info.Name == podKey {
+				delete(r.ipCache, ip)
+			}
+		}
 	}
 	delete(r.podIPs, podKey)
 
@@ -274,4 +291,14 @@ func (r *PodResolver) ResolveByIP(ip string) (PodInfo, bool) {
 	defer r.mu.RUnlock()
 	info, ok := r.ipCache[ip]
 	return info, ok
+}
+
+// removeString removes the first occurrence of s from the slice.
+func removeString(slice []string, s string) []string {
+	for i, v := range slice {
+		if v == s {
+			return append(slice[:i], slice[i+1:]...)
+		}
+	}
+	return slice
 }

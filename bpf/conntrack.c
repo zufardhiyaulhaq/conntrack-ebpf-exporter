@@ -10,51 +10,37 @@ char __license[] SEC("license") = "Dual MIT/GPL";
 /* BPF_ANY is a #define, not in kernel BTF / vmlinux.h */
 #define BPF_ANY 0
 
-// State buckets — must match Go constants in types.go
-#define STATE_TCP_ESTABLISHED 0
-#define STATE_TCP_TIME_WAIT   1
-#define STATE_TCP_CLOSE_WAIT  2
-#define STATE_TCP_OTHER       3
-#define STATE_UDP             4
-#define STATE_OTHER           5
+// Protocol buckets — must match Go constants in types.go
+#define PROTO_TCP   0
+#define PROTO_UDP   1
+#define PROTO_OTHER 2
 
 struct map_key {
     __u32 netns_inode;
-    __u8  state;
+    __u8  proto;
     __u8  pad[3];
 };
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 8192);
+    __uint(max_entries, 65536);
     __type(key, struct map_key);
     __type(value, __s64);
 } conntrack_counts SEC(".maps");
 
-static __always_inline __u8 get_state_bucket(struct nf_conn *ct) {
+static __always_inline __u8 get_proto_bucket(struct nf_conn *ct) {
     __u8 protonum;
     protonum = BPF_CORE_READ(ct, tuplehash[0].tuple.dst.protonum);
 
     if (protonum == IPPROTO_TCP) {
-        __u8 tcp_state;
-        tcp_state = BPF_CORE_READ(ct, proto.tcp.state);
-        switch (tcp_state) {
-        case TCP_CONNTRACK_ESTABLISHED:
-            return STATE_TCP_ESTABLISHED;
-        case TCP_CONNTRACK_TIME_WAIT:
-            return STATE_TCP_TIME_WAIT;
-        case TCP_CONNTRACK_CLOSE_WAIT:
-            return STATE_TCP_CLOSE_WAIT;
-        default:
-            return STATE_TCP_OTHER;
-        }
+        return PROTO_TCP;
     }
 
     if (protonum == IPPROTO_UDP) {
-        return STATE_UDP;
+        return PROTO_UDP;
     }
 
-    return STATE_OTHER;
+    return PROTO_OTHER;
 }
 
 static __always_inline __u32 get_netns_inode(struct nf_conn *ct) {
@@ -69,7 +55,7 @@ static __always_inline __u32 get_netns_inode(struct nf_conn *ct) {
 static __always_inline void count_insert(struct nf_conn *ct) {
     struct map_key key = {};
     key.netns_inode = get_netns_inode(ct);
-    key.state = get_state_bucket(ct);
+    key.proto = get_proto_bucket(ct);
 
     __s64 *val = bpf_map_lookup_elem(&conntrack_counts, &key);
     if (val) {
@@ -83,7 +69,7 @@ static __always_inline void count_insert(struct nf_conn *ct) {
 static __always_inline void count_delete(struct nf_conn *ct) {
     struct map_key key = {};
     key.netns_inode = get_netns_inode(ct);
-    key.state = get_state_bucket(ct);
+    key.proto = get_proto_bucket(ct);
 
     __s64 *val = bpf_map_lookup_elem(&conntrack_counts, &key);
     if (val) {

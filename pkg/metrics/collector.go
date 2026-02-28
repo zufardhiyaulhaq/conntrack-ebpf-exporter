@@ -10,15 +10,19 @@ import (
 
 const (
 	metricName = "node_conntrack_ebpf_entries_by_pod"
-	metricHelp = "Number of conntrack entries per pod, broken down by connection state."
+	metricHelp = "Number of conntrack entries per pod, broken down by protocol."
 )
 
 var desc = prometheus.NewDesc(
 	metricName,
 	metricHelp,
-	[]string{"pod", "namespace", "app", "state"},
+	[]string{"pod", "namespace", "app", "protocol"},
 	nil,
 )
+
+type conntrackMetricKey struct {
+	pod, namespace, app, protocol string
+}
 
 // Collector implements prometheus.Collector for per-pod conntrack metrics.
 type Collector struct {
@@ -36,7 +40,7 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- desc
 }
 
-// Collect reads BPF counters, resolves pods, and emits metrics.
+// Collect reads BPF counters, resolves pods, aggregates by label set, and emits metrics.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	counters, err := c.reader.ReadCounters()
 	if err != nil {
@@ -44,6 +48,8 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.NewInvalidMetric(desc, err)
 		return
 	}
+
+	aggregated := make(map[conntrackMetricKey]float64)
 
 	for key, count := range counters {
 		if count <= 0 {
@@ -61,22 +67,26 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 			app = info.App
 		}
 
-		stateName, ok := ebpfpkg.StateNames[key.State]
+		protoName, ok := ebpfpkg.ProtoNames[key.Proto]
 		if !ok {
-			stateName = "other"
+			protoName = "other"
 		}
 
+		mk := conntrackMetricKey{pod: podName, namespace: namespace, app: app, protocol: protoName}
+		aggregated[mk] += float64(count)
+	}
+
+	for mk, total := range aggregated {
 		metric, err := prometheus.NewConstMetric(
 			desc,
 			prometheus.GaugeValue,
-			float64(count),
-			podName, namespace, app, stateName,
+			total,
+			mk.pod, mk.namespace, mk.app, mk.protocol,
 		)
 		if err != nil {
 			log.Errorf("Failed to create metric: %v", err)
 			continue
 		}
-
 		ch <- metric
 	}
 }

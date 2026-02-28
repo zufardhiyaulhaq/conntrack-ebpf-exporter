@@ -38,7 +38,7 @@ type CiliumMapReader struct {
 func NewCiliumReader() (*CiliumMapReader, error) {
 	ct4, err := findBPFMapByName(ciliumCT4MapName)
 	if err != nil {
-		return nil, fmt.Errorf("Cilium CT4 map not found (is Cilium running?): %w", err)
+		return nil, fmt.Errorf("cilium CT4 map not found (is Cilium running?): %w", err)
 	}
 
 	// any4 is optional — handles ICMP and other non-TCP/UDP
@@ -74,8 +74,8 @@ func findBPFMapByName(name string) (*ebpf.Map, error) {
 }
 
 // ReadCounts iterates Cilium's CT maps and returns entry counts grouped by
-// source pod IP and protocol. Both original and reply direction entries are
-// counted and attributed to the pod that owns the connection.
+// source pod IP and protocol. Only original-direction entries are counted
+// to avoid double-counting (Cilium stores both original and reply entries).
 func (r *CiliumMapReader) ReadCounts() (map[CiliumCountKey]int64, error) {
 	result := make(map[CiliumCountKey]int64)
 
@@ -97,14 +97,14 @@ func (r *CiliumMapReader) iterateMap(m *ebpf.Map, result map[CiliumCountKey]int6
 
 	iter := m.Iterate()
 	for iter.Next(&tuple, &value) {
-		// Determine which IP is the pod's based on direction flag.
-		// Bit 0: 0 = original (saddr is pod), 1 = reply (daddr is pod).
-		var podIP net.IP
-		if tuple.Flags&0x1 == 0 {
-			podIP = net.IPv4(tuple.SourceAddr[0], tuple.SourceAddr[1], tuple.SourceAddr[2], tuple.SourceAddr[3])
-		} else {
-			podIP = net.IPv4(tuple.DestAddr[0], tuple.DestAddr[1], tuple.DestAddr[2], tuple.DestAddr[3])
+		// Only count original-direction entries (Flags bit 0 == 0).
+		// Cilium stores two entries per connection (original + reply).
+		// Counting both would double the metrics.
+		if tuple.Flags&0x1 != 0 {
+			continue
 		}
+
+		podIP := net.IPv4(tuple.SourceAddr[0], tuple.SourceAddr[1], tuple.SourceAddr[2], tuple.SourceAddr[3])
 
 		var proto string
 		switch tuple.NextHdr {

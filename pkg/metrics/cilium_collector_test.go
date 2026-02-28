@@ -81,3 +81,34 @@ func TestCiliumCollector_UnresolvedIPGetsUnknownLabels(t *testing.T) {
 		}
 	}
 }
+
+func TestCiliumCollector_AggregatesMultipleUnresolvedIPs(t *testing.T) {
+	reader := &mockCiliumReader{
+		counts: map[ebpfpkg.CiliumCountKey]int64{
+			{SourceIP: "10.0.99.1", Protocol: "tcp"}: 30,
+			{SourceIP: "10.0.99.2", Protocol: "tcp"}: 20,
+			{SourceIP: "10.0.99.3", Protocol: "tcp"}: 50,
+		},
+	}
+	res := &mockResolver{ips: map[string]resolver.PodInfo{}}
+
+	c := NewCiliumCollector(reader, res)
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(c)
+	families, err := reg.Gather()
+	if err != nil {
+		t.Fatalf("gather error: %v", err)
+	}
+
+	if len(families) == 0 {
+		t.Fatal("expected metric family")
+	}
+
+	// Three unresolved IPs with same protocol should aggregate into one metric
+	if len(families[0].Metric) != 1 {
+		t.Errorf("expected 1 aggregated metric for unresolved IPs, got %d", len(families[0].Metric))
+	}
+	if *families[0].Metric[0].Gauge.Value != 100 {
+		t.Errorf("expected aggregated value 100, got %v", *families[0].Metric[0].Gauge.Value)
+	}
+}
