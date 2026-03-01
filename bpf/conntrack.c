@@ -33,6 +33,19 @@ struct {
     __type(value, __s64);
 } conntrack_counts SEC(".maps");
 
+#define DNS_PORT __bpf_constant_htons(53)
+
+struct dns_key {
+    __u32 ip;
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 131072);
+    __type(key, struct dns_key);
+    __type(value, __s64);
+} dns_counts SEC(".maps");
+
 static __always_inline __u8 get_proto_bucket(struct nf_conn *ct) {
     __u8 protonum;
     protonum = BPF_CORE_READ(ct, tuplehash[0].tuple.dst.protonum);
@@ -61,28 +74,51 @@ static __always_inline void update_count(struct map_key *key, __s64 delta) {
     }
 }
 
+static __always_inline void update_dns_count(struct dns_key *key, __s64 delta) {
+    __s64 *val = bpf_map_lookup_elem(&dns_counts, key);
+    if (val) {
+        __s64 new_val = __sync_fetch_and_add(val, delta) + delta;
+        if (delta < 0 && new_val <= 0) {
+            bpf_map_delete_elem(&dns_counts, key);
+        }
+    } else if (delta > 0) {
+        __s64 initval = delta;
+        bpf_map_update_elem(&dns_counts, key, &initval, BPF_ANY);
+    }
+}
+
 // Note: The decrement and delete are non-atomic. A concurrent count_insert on
 // another CPU could increment between the two operations, and the subsequent
 // delete would lose that insert. This is an accepted tradeoff — the goal is
 // finding offending pods (100K+ entries), not exact per-entry accounting.
 // Stale zero entries are harmless (userspace skips count <= 0).
 static __always_inline void count_entries(struct nf_conn *ct, __s64 delta) {
-    __u8 proto = get_proto_bucket(ct);
     __u32 src_ip = BPF_CORE_READ(ct, tuplehash[0].tuple.src.u3.ip);
     __u32 dst_ip = BPF_CORE_READ(ct, tuplehash[0].tuple.dst.u3.ip);
+    __be16 src_port = BPF_CORE_READ(ct, tuplehash[0].tuple.src.u.all);
+    __be16 dst_port = BPF_CORE_READ(ct, tuplehash[0].tuple.dst.u.all);
 
-    struct map_key src_key = {};
-    src_key.ip = src_ip;
-    src_key.proto = proto;
-    src_key.direction = DIR_SOURCE;
+    if (src_port == DNS_PORT || dst_port == DNS_PORT) {
+        struct dns_key src_dns = { .ip = src_ip };
+        struct dns_key dst_dns = { .ip = dst_ip };
+        update_dns_count(&src_dns, delta);
+        update_dns_count(&dst_dns, delta);
+    } else {
+        __u8 proto = get_proto_bucket(ct);
 
-    struct map_key dst_key = {};
-    dst_key.ip = dst_ip;
-    dst_key.proto = proto;
-    dst_key.direction = DIR_DEST;
+        struct map_key src_key = {};
+        src_key.ip = src_ip;
+        src_key.proto = proto;
+        src_key.direction = DIR_SOURCE;
 
-    update_count(&src_key, delta);
-    update_count(&dst_key, delta);
+        struct map_key dst_key = {};
+        dst_key.ip = dst_ip;
+        dst_key.proto = proto;
+        dst_key.direction = DIR_DEST;
+
+        update_count(&src_key, delta);
+        update_count(&dst_key, delta);
+    }
 }
 
 SEC("kprobe/nf_conntrack_hash_check_insert")

@@ -115,10 +115,12 @@ func NewLoader() (*Loader, error) {
 	return &Loader{coll: coll, kpInsert: kpInsert, kpDelete: kpDelete}, nil
 }
 
-// ReadCounters iterates the BPF hash map and returns all {ip, proto, direction} → count pairs.
-func (l *Loader) ReadCounters() (map[MapKey]int64, error) {
-	result := make(map[MapKey]int64)
+// ReadCounters iterates both BPF hash maps and returns regular and DNS counts.
+func (l *Loader) ReadCounters() (*ConntrackReadResult, error) {
+	counts := make(map[MapKey]int64)
+	dnsCounts := make(map[DNSMapKey]int64)
 
+	// Read regular conntrack counts
 	m := l.coll.Maps["conntrack_counts"]
 	if m == nil {
 		return nil, fmt.Errorf("BPF map 'conntrack_counts' not found")
@@ -132,18 +134,42 @@ func (l *Loader) ReadCounters() (map[MapKey]int64, error) {
 		if value <= 0 {
 			continue
 		}
-		result[key] = value
+		counts[key] = value
 	}
 
 	if err := iter.Err(); err != nil {
-		if errors.Is(err, ebpf.ErrIterationAborted) {
-			log.Warn("BPF map iteration aborted (map modified during walk), partial results returned")
-			return result, nil
+		if !errors.Is(err, ebpf.ErrIterationAborted) {
+			return nil, fmt.Errorf("iterating conntrack_counts map: %w", err)
 		}
-		return nil, fmt.Errorf("iterating BPF map: %w", err)
+		log.Warn("conntrack_counts iteration aborted, partial results returned")
 	}
 
-	return result, nil
+	// Read DNS counts
+	dm := l.coll.Maps["dns_counts"]
+	if dm == nil {
+		return nil, fmt.Errorf("BPF map 'dns_counts' not found")
+	}
+	{
+		var dnsKey DNSMapKey
+		var dnsValue int64
+
+		dnsIter := dm.Iterate()
+		for dnsIter.Next(&dnsKey, &dnsValue) {
+			if dnsValue <= 0 {
+				continue
+			}
+			dnsCounts[dnsKey] = dnsValue
+		}
+
+		if err := dnsIter.Err(); err != nil {
+			if !errors.Is(err, ebpf.ErrIterationAborted) {
+				return nil, fmt.Errorf("iterating dns_counts map: %w", err)
+			}
+			log.Warn("dns_counts iteration aborted, partial results returned")
+		}
+	}
+
+	return &ConntrackReadResult{Counts: counts, DNSCounts: dnsCounts}, nil
 }
 
 // Close detaches kprobes and closes BPF objects.

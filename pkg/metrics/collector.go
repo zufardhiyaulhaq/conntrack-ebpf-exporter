@@ -12,20 +12,26 @@ import (
 )
 
 const (
-	conntrackMetricName = "node_conntrack_ebpf_entries_by_pod"
+	conntrackMetricName    = "node_conntrack_ebpf_entries_by_pod"
+	conntrackDNSMetricName = "node_conntrack_ebpf_dns_entries_by_pod"
 )
 
 type conntrackMetricKey struct {
 	pod, namespace, app, protocol, direction string
 }
 
+type conntrackDNSMetricKey struct {
+	pod, namespace, app string
+}
+
 // Collector implements prometheus.Collector for per-pod conntrack metrics.
 type Collector struct {
-	reader    ebpfpkg.MapReader
-	resolver  resolver.Resolver
-	breakdown bool
-	descFull  *prometheus.Desc
+	reader     ebpfpkg.MapReader
+	resolver   resolver.Resolver
+	breakdown  bool
+	descFull   *prometheus.Desc
 	descSimple *prometheus.Desc
+	dnsDesc    *prometheus.Desc
 }
 
 // NewCollector creates a new Collector. When breakdown is true, metrics include
@@ -49,6 +55,12 @@ func NewCollector(reader ebpfpkg.MapReader, resolver resolver.Resolver, breakdow
 			[]string{"pod", "namespace", "app"},
 			constLabels,
 		),
+		dnsDesc: prometheus.NewDesc(
+			conntrackDNSMetricName,
+			"Number of conntrack entries on port 53 (DNS) per pod.",
+			[]string{"pod", "namespace", "app"},
+			constLabels,
+		),
 	}
 }
 
@@ -59,11 +71,12 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	} else {
 		ch <- c.descSimple
 	}
+	ch <- c.dnsDesc
 }
 
 // Collect reads BPF counters, resolves pods by IP, aggregates by label set, and emits metrics.
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
-	counters, err := c.reader.ReadCounters()
+	result, err := c.reader.ReadCounters()
 	if err != nil {
 		desc := c.descSimple
 		if c.breakdown {
@@ -71,12 +84,14 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		}
 		log.Errorf("Failed to read BPF counters: %v", err)
 		ch <- prometheus.NewInvalidMetric(desc, err)
+		ch <- prometheus.NewInvalidMetric(c.dnsDesc, err)
 		return
 	}
 
+	// Emit regular CT entry counts.
 	aggregated := make(map[conntrackMetricKey]float64)
 
-	for key, count := range counters {
+	for key, count := range result.Counts {
 		if count <= 0 {
 			continue
 		}
@@ -141,6 +156,45 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		}
 		if err != nil {
 			log.Errorf("Failed to create metric: %v", err)
+			continue
+		}
+		ch <- metric
+	}
+
+	// Emit DNS entry counts.
+	dnsAggregated := make(map[conntrackDNSMetricKey]float64)
+
+	for key, count := range result.DNSCounts {
+		if count <= 0 {
+			continue
+		}
+
+		ip := uint32ToIP(key.IP)
+
+		podName := "unknown"
+		namespace := "unknown"
+		app := "unknown"
+
+		info, ok := c.resolver.ResolveByIP(ip)
+		if ok {
+			podName = info.Name
+			namespace = info.Namespace
+			app = info.App
+		}
+
+		mk := conntrackDNSMetricKey{pod: podName, namespace: namespace, app: app}
+		dnsAggregated[mk] += float64(count)
+	}
+
+	for mk, total := range dnsAggregated {
+		metric, err := prometheus.NewConstMetric(
+			c.dnsDesc,
+			prometheus.GaugeValue,
+			total,
+			mk.pod, mk.namespace, mk.app,
+		)
+		if err != nil {
+			log.Errorf("Failed to create DNS metric: %v", err)
 			continue
 		}
 		ch <- metric

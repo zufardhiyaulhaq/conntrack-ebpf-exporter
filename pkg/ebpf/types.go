@@ -34,8 +34,19 @@ type MapKey struct {
 	Pad       [2]uint8
 }
 
+// DNSMapKey matches the dns_key struct in conntrack.c.
+type DNSMapKey struct {
+	IP uint32
+}
+
+// ConntrackReadResult holds both regular and DNS-specific counts.
+type ConntrackReadResult struct {
+	Counts    map[MapKey]int64
+	DNSCounts map[DNSMapKey]int64
+}
+
 // MapReader reads counters from the BPF map.
 type MapReader interface {
-	ReadCounters() (map[MapKey]int64, error)
+	ReadCounters() (*ConntrackReadResult, error)
 	Close() error
 }
