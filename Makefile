@@ -25,3 +25,13 @@ test:
 ## lint: Run linter
 lint:
 	golangci-lint run ./...
+
+.PHONY: readme
+readme:
+	helm-docs -c ./charts/pod-connection-exporter -d > README.md
+	helm-docs -c ./charts/pod-connection-exporter
+
+.PHONY: helm.create.releases
+helm.create.releases:
+	helm package charts/pod-connection-exporter --destination charts/releases
+	helm repo index charts/releases

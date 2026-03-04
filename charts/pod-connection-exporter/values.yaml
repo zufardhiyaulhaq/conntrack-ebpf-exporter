@@ -1,0 +1,85 @@
+# -- Number of replicas (only applies if kind is Deployment, ignored for DaemonSet)
+replicaCount: 1
+
+image:
+  # -- Container image repository
+  repository: ghcr.io/zufardhiyaulhaq/conntrack-ebpf-exporter
+  # -- Image pull policy
+  pullPolicy: Always
+  # -- Overrides the image tag (default is the chart appVersion)
+  tag: ""
+
+# -- Image pull secrets for private registries
+imagePullSecrets: []
+# -- Override the chart name
+nameOverride: ""
+# -- Override the full release name
+fullnameOverride: ""
+
+serviceAccount:
+  # -- Create a ServiceAccount
+  create: true
+  # -- Annotations to add to the ServiceAccount
+  annotations: {}
+  # -- The name of the ServiceAccount (generated if not set)
+  name: ""
+
+# -- Pod annotations
+podAnnotations:
+  sidecar.istio.io/inject: "false"
+
+# -- Pod labels
+podLabels: {}
+
+# -- Pod security context
+podSecurityContext: {}
+
+securityContext:
+  # -- Run container as privileged (required for BPF)
+  privileged: true
+
+config:
+  # -- Log level (debug, info, warn, error)
+  logLevel: "info"
+  # -- Metrics HTTP port
+  metricsPort: "9990"
+  # -- Enable protocol and direction breakdown labels
+  metricBreakdown: "false"
+  # -- Cache interval for Cilium CT reads
+  metricCacheInterval: "30s"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 256m
+    memory: 128Mi
+
+# -- Node selector for scheduling
+nodeSelector: {}
+
+# -- Tolerations for scheduling
+tolerations:
+  - operator: Exists
+
+# -- Affinity rules
+affinity: {}
+
+# -- Update strategy for the DaemonSet
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+
+podMonitor:
+  # -- Create a PodMonitor for Prometheus Operator
+  enabled: false
+  # -- Additional labels for the PodMonitor
+  labels: {}
+  # -- Scrape interval
+  interval: ""
+  # -- Scrape path
+  path: /metrics
+  # -- Honor labels from the exporter
+  honorLabels: true
