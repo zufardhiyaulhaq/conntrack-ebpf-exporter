@@ -1,17 +1,17 @@
-# pod-connection-exporter
+# conntrack-ebpf-exporter
 
 ## Overview
 eBPF-based per-pod conntrack metrics exporter for Kubernetes. Attaches kprobes to the kernel conntrack subsystem and optionally reads Cilium CT maps to expose per-pod connection tracking metrics via Prometheus.
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.0](https://img.shields.io/badge/AppVersion-0.1.0-informational?style=flat-square) [![made with Go](https://img.shields.io/badge/made%20with-Go-brightgreen)](http://golang.org) [![Github master branch build](https://img.shields.io/github/actions/workflow/status/zufardhiyaulhaq/pod-connection-exporter/master.yml?branch=master)](https://github.com/zufardhiyaulhaq/pod-connection-exporter/actions/workflows/master.yml) [![GitHub issues](https://img.shields.io/github/issues/zufardhiyaulhaq/pod-connection-exporter)](https://github.com/zufardhiyaulhaq/pod-connection-exporter/issues) [![GitHub pull requests](https://img.shields.io/github/issues-pr/zufardhiyaulhaq/pod-connection-exporter)](https://github.com/zufardhiyaulhaq/pod-connection-exporter/pulls)
+![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.0](https://img.shields.io/badge/AppVersion-0.1.0-informational?style=flat-square) [![made with Go](https://img.shields.io/badge/made%20with-Go-brightgreen)](http://golang.org) [![Github master branch build](https://img.shields.io/github/actions/workflow/status/zufardhiyaulhaq/conntrack-ebpf-exporter/master.yml?branch=master)](https://github.com/zufardhiyaulhaq/conntrack-ebpf-exporter/actions/workflows/master.yml) [![GitHub issues](https://img.shields.io/github/issues/zufardhiyaulhaq/conntrack-ebpf-exporter)](https://github.com/zufardhiyaulhaq/conntrack-ebpf-exporter/issues) [![GitHub pull requests](https://img.shields.io/github/issues-pr/zufardhiyaulhaq/conntrack-ebpf-exporter)](https://github.com/zufardhiyaulhaq/conntrack-ebpf-exporter/pulls)
 
 ## Installing
 
 To install the chart with the release name `my-release`:
 
 ```console
-helm repo add pod-connection-exporter https://zufardhiyaulhaq.com/pod-connection-exporter/charts/releases/
-helm install my-pod-connection-exporter pod-connection-exporter/pod-connection-exporter --values values.yaml
+helm repo add conntrack-ebpf-exporter https://zufardhiyaulhaq.com/conntrack-ebpf-exporter/charts/releases/
+helm install my-conntrack-ebpf-exporter conntrack-ebpf-exporter/conntrack-ebpf-exporter --values values.yaml
 ```
 
 ## Prerequisite
@@ -24,20 +24,20 @@ helm install my-pod-connection-exporter pod-connection-exporter/pod-connection-e
 ## Usage
 1. Install with default values (deploys as DaemonSet to all nodes):
 ```console
-helm install pod-connection-exporter pod-connection-exporter/pod-connection-exporter \
+helm install conntrack-ebpf-exporter conntrack-ebpf-exporter/conntrack-ebpf-exporter \
   --namespace kube-system
 ```
 
 2. Enable PodMonitor for Prometheus Operator:
 ```console
-helm install pod-connection-exporter pod-connection-exporter/pod-connection-exporter \
+helm install conntrack-ebpf-exporter conntrack-ebpf-exporter/conntrack-ebpf-exporter \
   --namespace kube-system \
   --set podMonitor.enabled=true
 ```
 
 3. Enable metric breakdown (protocol and direction labels):
 ```console
-helm install pod-connection-exporter pod-connection-exporter/pod-connection-exporter \
+helm install conntrack-ebpf-exporter conntrack-ebpf-exporter/conntrack-ebpf-exporter \
   --namespace kube-system \
   --set config.metricBreakdown="true"
 ```
@@ -54,7 +54,7 @@ helm install pod-connection-exporter pod-connection-exporter/pod-connection-expo
 | fullnameOverride | string | `""` | Override the full release name |
 | image.pullPolicy | string | `"Always"` | Image pull policy |
 | image.repository | string | `"ghcr.io/zufardhiyaulhaq/conntrack-ebpf-exporter"` | Container image repository |
-| image.tag | string | `""` | Overrides the image tag (default is the chart appVersion) |
+| image.tag | string | `"v0.1.0"` | Overrides the image tag (default is the chart appVersion) |
 | imagePullSecrets | list | `[]` | Image pull secrets for private registries |
 | nameOverride | string | `""` | Override the chart name |
 | nodeSelector | object | `{}` | Node selector for scheduling |
@@ -78,7 +78,7 @@ helm install pod-connection-exporter pod-connection-exporter/pod-connection-expo
 | tolerations | list | `[{"operator":"Exists"}]` | Tolerations for scheduling |
 | updateStrategy | object | `{"rollingUpdate":{"maxUnavailable":1},"type":"RollingUpdate"}` | Update strategy for the DaemonSet |
 
-see example values file [here](https://github.com/zufardhiyaulhaq/pod-connection-exporter/blob/main/charts/pod-connection-exporter/values.yaml)
+see example values file [here](https://github.com/zufardhiyaulhaq/conntrack-ebpf-exporter/blob/main/charts/conntrack-ebpf-exporter/values.yaml)
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

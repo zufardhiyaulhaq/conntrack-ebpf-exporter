@@ -1,0 +1,17 @@
+apiVersion: v2
+name: conntrack-ebpf-exporter
+description: A Helm chart for conntrack-ebpf-exporter — eBPF-based per-pod conntrack metrics exporter
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ebpf
+  - conntrack
+  - prometheus
+  - exporter
+  - kubernetes
+home: https://github.com/zufardhiyaulhaq/conntrack-ebpf-exporter
+sources:
+  - https://github.com/zufardhiyaulhaq/conntrack-ebpf-exporter
+maintainers:
+  - name: zufardhiyaulhaq

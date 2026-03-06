@@ -1,13 +1,13 @@
 apiVersion: v1
 entries:
-  pod-connection-exporter:
+  conntrack-ebpf-exporter:
   - apiVersion: v2
     appVersion: 0.1.0
-    created: "2026-03-04T17:53:42.001187+07:00"
-    description: A Helm chart for pod-connection-exporter — eBPF-based per-pod conntrack
+    created: "2026-03-06T11:28:27.209136+07:00"
+    description: A Helm chart for conntrack-ebpf-exporter — eBPF-based per-pod conntrack
       metrics exporter
-    digest: e368d6ef8cda4121179ec7a3a890d073b06c43998de361387491be8fcb5271bf
-    home: https://github.com/zufardhiyaulhaq/pod-connection-exporter
+    digest: 6f17e01c989301d019d5cd843ed59bcd5969553d9c3835b32e2240f49844b49e
+    home: https://github.com/zufardhiyaulhaq/conntrack-ebpf-exporter
     keywords:
     - ebpf
     - conntrack
@@ -16,11 +16,11 @@ entries:
     - kubernetes
     maintainers:
     - name: zufardhiyaulhaq
-    name: pod-connection-exporter
+    name: conntrack-ebpf-exporter
     sources:
-    - https://github.com/zufardhiyaulhaq/pod-connection-exporter
+    - https://github.com/zufardhiyaulhaq/conntrack-ebpf-exporter
     type: application
     urls:
-    - pod-connection-exporter-0.1.0.tgz
+    - conntrack-ebpf-exporter-0.1.0.tgz
     version: 0.1.0
-generated: "2026-03-04T17:53:42.000921+07:00"
+generated: "2026-03-06T11:28:27.208794+07:00"

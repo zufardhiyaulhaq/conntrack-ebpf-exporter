@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "pod-connection-exporter.name" -}}
+{{- define "conntrack-ebpf-exporter.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "pod-connection-exporter.fullname" -}}
+{{- define "conntrack-ebpf-exporter.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "pod-connection-exporter.chart" -}}
+{{- define "conntrack-ebpf-exporter.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels.
 */}}
-{{- define "pod-connection-exporter.labels" -}}
-helm.sh/chart: {{ include "pod-connection-exporter.chart" . }}
-{{ include "pod-connection-exporter.selectorLabels" . }}
+{{- define "conntrack-ebpf-exporter.labels" -}}
+helm.sh/chart: {{ include "conntrack-ebpf-exporter.chart" . }}
+{{ include "conntrack-ebpf-exporter.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -43,17 +43,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels.
 */}}
-{{- define "pod-connection-exporter.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "pod-connection-exporter.name" . }}
+{{- define "conntrack-ebpf-exporter.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "conntrack-ebpf-exporter.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use.
 */}}
-{{- define "pod-connection-exporter.serviceAccountName" -}}
+{{- define "conntrack-ebpf-exporter.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "pod-connection-exporter.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "conntrack-ebpf-exporter.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

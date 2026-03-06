@@ -28,10 +28,10 @@ lint:
 
 .PHONY: readme
 readme:
-	helm-docs -c ./charts/pod-connection-exporter -d > README.md
-	helm-docs -c ./charts/pod-connection-exporter
+	helm-docs -c ./charts/conntrack-ebpf-exporter -d > README.md
+	helm-docs -c ./charts/conntrack-ebpf-exporter
 
 .PHONY: helm.create.releases
 helm.create.releases:
-	helm package charts/pod-connection-exporter --destination charts/releases
+	helm package charts/conntrack-ebpf-exporter --destination charts/releases
 	helm repo index charts/releases
